@@ -1,0 +1,19 @@
+[package]
+name = "terminus"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.80"
+bitflags = "2.5.0"
+crossterm = { version = "0.27.0", features = ["event-stream", "serde"] }
+futures = "0.3.30"
+tokio = { version = "1.37.0", features = ["full"] }
+
+[dev-dependencies]
+criterion = "0.5.1"
+pretty_assertions = "1.4.0"
+
+[[bench]]
+name = "iter_cells"
+harness = false
