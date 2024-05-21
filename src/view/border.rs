@@ -6,17 +6,27 @@ use super::*;
 pub struct Border<V> {
     pub(crate) child: V,
     pub(crate) border_color: Color,
+    pub(crate) border_style: BorderStyle,
 }
 
 impl<V> private::Sealed for Border<V> {}
 
 impl<V> Border<V> {
     pub fn new(child: V, border_color: Color) -> Self {
-        Self { child, border_color }
+        Self {
+            child,
+            border_color,
+            border_style: BorderStyle::Single, // Default to Single
+        }
     }
 
     pub fn border_color(mut self, border_color: Color) -> Self {
         self.border_color = border_color;
+        self
+    }
+
+    pub fn border_style(mut self, border_style: BorderStyle) -> Self {
+        self.border_style = border_style;
         self
     }
 
@@ -30,28 +40,72 @@ impl<V> Border<V> {
         let right = rect.right() - 1;
         let bottom_y = rect.bottom() - 1;
 
+        let components = self.border_style.components();
+
         // Draw corners
-        Self::draw_corner(buffer, left, top, TOP_LEFT, self.border_color);
-        Self::draw_corner(buffer, right, top, TOP_RIGHT, self.border_color);
-        Self::draw_corner(buffer, left, bottom_y, BOTTOM_LEFT, self.border_color);
-        Self::draw_corner(buffer, right, bottom_y, BOTTOM_RIGHT, self.border_color);
+        Self::draw_corner(buffer, left, top, components.top_left, self.border_color);
+        Self::draw_corner(buffer, right, top, components.top_right, self.border_color);
+        Self::draw_corner(buffer, left, bottom_y, components.bottom_left, self.border_color);
+        Self::draw_corner(buffer, right, bottom_y, components.bottom_right, self.border_color);
 
         // Draw horizontal lines
-        draw_horizontal_line(buffer, top, left + 1, right, HORIZONTAL, self.border_color);
-        draw_horizontal_line(buffer, bottom_y, left + 1, right, HORIZONTAL, self.border_color);
+        draw_horizontal_line(buffer, top, left + 1, right, components.horizontal, self.border_color);
+        draw_horizontal_line(
+            buffer,
+            bottom_y,
+            left + 1,
+            right,
+            components.horizontal,
+            self.border_color,
+        );
 
         // Draw vertical lines
-        draw_vertical_line(buffer, left, top + 1, bottom_y, VERTICAL, self.border_color);
-        draw_vertical_line(buffer, right, top + 1, bottom_y, VERTICAL, self.border_color);
+        draw_vertical_line(buffer, left, top + 1, bottom_y, components.vertical, self.border_color);
+        draw_vertical_line(buffer, right, top + 1, bottom_y, components.vertical, self.border_color);
     }
 }
 
-const VERTICAL: char = '│';
-const HORIZONTAL: char = '─';
-const TOP_LEFT: char = '┌';
-const TOP_RIGHT: char = '┐';
-const BOTTOM_LEFT: char = '└';
-const BOTTOM_RIGHT: char = '┘';
+#[derive(Debug, Clone)]
+pub enum BorderStyle {
+    Single,
+    Double,
+}
+
+impl BorderStyle {
+    fn components(&self) -> &'static BorderComponents {
+        match self {
+            BorderStyle::Single => &SINGLE_BORDER_COMPONENTS,
+            BorderStyle::Double => &DOUBLE_BORDER_COMPONENTS,
+        }
+    }
+}
+
+struct BorderComponents {
+    top_left: char,
+    top_right: char,
+    bottom_left: char,
+    bottom_right: char,
+    horizontal: char,
+    vertical: char,
+}
+
+const SINGLE_BORDER_COMPONENTS: BorderComponents = BorderComponents {
+    top_left: '┌',
+    top_right: '┐',
+    bottom_left: '└',
+    bottom_right: '┘',
+    horizontal: '─',
+    vertical: '│',
+};
+
+const DOUBLE_BORDER_COMPONENTS: BorderComponents = BorderComponents {
+    top_left: '╔',
+    top_right: '╗',
+    bottom_left: '╚',
+    bottom_right: '╝',
+    horizontal: '═',
+    vertical: '║',
+};
 
 fn draw_horizontal_line(buffer: &mut Buffer, y: u16, start_x: u16, end_x: u16, char: char, color: Color) {
     for x in start_x..end_x {
@@ -126,6 +180,21 @@ mod tests {
             "│ │ Nested │ │", //
             "│ └────────┘ │", //
             "└────────────┘", //
+        ];
+        assert_eq!(outer_view.size(Size::max()), Size { width: 14, height: 5 });
+        assert_rendered_view(outer_view, expected_output, 14, 5);
+    }
+
+    #[test]
+    fn test_nested_bordered_view_double() {
+        let inner_view = text("Nested").border().border_style(BorderStyle::Double);
+        let outer_view = inner_view.border().border_style(BorderStyle::Double);
+        let expected_output = vec![
+            "╔════════════╗", //
+            "║ ╔════════╗ ║", //
+            "║ ║ Nested ║ ║", //
+            "║ ╚════════╝ ║", //
+            "╚════════════╝", //
         ];
         assert_eq!(outer_view.size(Size::max()), Size { width: 14, height: 5 });
         assert_rendered_view(outer_view, expected_output, 14, 5);

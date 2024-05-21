@@ -23,7 +23,7 @@ pub use stack::*;
 pub use text::*;
 pub use view_tuple::*;
 
-use self::border::Border;
+use self::border::{Border, BorderStyle};
 
 /// Syntax Examples
 /// ---------------
@@ -57,6 +57,7 @@ pub trait ViewExtensions: View + Sized {
         Border {
             child: self,
             border_color: Color::Reset,
+            border_style: BorderStyle::Single,
         }
     }
 
