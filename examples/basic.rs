@@ -2,13 +2,8 @@ struct SimpleApp {
     count: usize,
 }
 
-use std::sync::Arc;
-
 use crossterm::event::*;
-use terminus::{
-    terminal_app::{SyncTerminalApp, SyncTerminalAppExt},
-    *,
-};
+use terminus::*;
 
 impl SyncTerminalApp for SimpleApp {
     fn render(&self) -> impl View {

@@ -1,14 +1,3 @@
-//      __    _________    ____  _____   ________   ____  __  _____________
-//     / /   / ____/   |  / __ \/  _/ | / / ____/  / __ \/ / / / ___/_  __/
-//    / /   / __/ / /| | / /_/ // //  |/ / / __   / /_/ / / / /\__ \ / /
-//   / /___/ /___/ ___ |/ _, _// // /|  / /_/ /  / _, _/ /_/ /___/ // /
-//  /_____/_____/_/  |_/_/ |_/___/_/ |_/\____/__/_/ |_|\____//____//_/  ____________
-//     / __ ) \/ /  / __ )/ __ \/ / / /_  __/ ____/  / ____/ __ \/ __ \/ ____/ ____/
-//    / __  |\  /  / __  / /_/ / / / / / / / __/    / /_  / / / / /_/ / /   / __/
-//   / /_/ / / /  / /_/ / _, _/ /_/ / / / / /___   / __/ / /_/ / _, _/ /___/ /___
-//  /_____/ /_/  /_____/_/ |_|\____/ /_/ /_____/  /_/    \____/_/ |_|\____/_____/
-//
-
 pub mod border;
 pub mod padding;
 pub mod stack;
@@ -16,14 +5,13 @@ pub mod text;
 pub mod view_tuple;
 use crate::*;
 
-use buffer::*;
+pub use border::{Border, BorderStyle};
+pub use buffer::*;
 pub use context_modifier::*;
 pub use padding::*;
 pub use stack::*;
 pub use text::*;
 pub use view_tuple::*;
-
-use self::border::{Border, BorderStyle};
 
 /// Syntax Examples
 /// ---------------
@@ -58,6 +46,7 @@ pub trait ViewExtensions: View + Sized {
             child: self,
             border_color: Color::Reset,
             border_style: BorderStyle::Single,
+            title: None,
         }
     }
 

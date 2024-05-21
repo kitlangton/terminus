@@ -1,10 +1,12 @@
+use compact_str::CompactString;
+
 use crate::Color;
 
 use super::Modifier;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
-    pub(crate) symbol: String,
+    pub(crate) symbol: CompactString,
     pub(crate) fg: Color,
     pub(crate) bg: Color,
     pub(crate) modifier: Modifier,
@@ -12,7 +14,7 @@ pub struct Cell {
 
 impl Cell {
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Self {
-        self.symbol = symbol.to_string();
+        self.symbol = symbol.into();
         self
     }
 
@@ -28,7 +30,7 @@ impl Cell {
 
     pub fn new(symbol: &str) -> Self {
         Self {
-            symbol: symbol.to_string(),
+            symbol: symbol.into(),
             fg: Color::Reset,
             bg: Color::Reset,
             modifier: Modifier::empty(),
@@ -48,7 +50,7 @@ impl Cell {
 impl Default for Cell {
     fn default() -> Cell {
         Cell {
-            symbol: " ".to_string(),
+            symbol: " ".into(),
             fg: Color::Reset,
             bg: Color::Reset,
             modifier: Modifier::empty(),

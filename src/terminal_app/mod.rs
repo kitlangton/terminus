@@ -24,6 +24,8 @@ pub trait AsyncTerminalApp {
     fn render(&self) -> impl View;
     fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool;
 
+    fn init(&mut self, tx: &mpsc::UnboundedSender<Self::Message>) {}
+
     fn handle_exit(&self) -> Option<impl View> {
         None as Option<EmptyView>
     }
@@ -53,31 +55,33 @@ pub struct VecWriter {
 #[async_trait]
 pub trait AsyncTerminalAppExt: AsyncTerminalApp {
     async fn execute(&mut self, use_full_screen: bool) {
-        let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Self::Message>();
-        let (event_tx, mut event_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
+        let (message_sender, mut message_receiver) = mpsc::unbounded_channel::<Self::Message>();
+        let (terminal_event_sender, mut terminal_event_receiver) = mpsc::unbounded_channel::<crossterm::event::Event>();
         let mut renderer = if use_full_screen {
             SomeRenderer::FullScreen(FullScreenRenderer::new(stdout()))
         } else {
             SomeRenderer::Inline(InlineRenderer::new(stdout()))
         };
-        let event_task = handle_event(event_tx);
+        let event_task = handle_event(terminal_event_sender);
         let _guard = RawModeGuard::new(true);
+
+        self.init(&message_sender);
 
         loop {
             renderer.render(&self.render());
 
             tokio::select! {
-                Some(event) = event_rx.recv() => match event {
+                Some(event) = terminal_event_receiver.recv() => match event {
                     crossterm::event::Event::Resize(w, h) => renderer.resize(w, h),
                     crossterm::event::Event::Key(key) => {
-                        if !self.update(TerminalEvent::Key(key), &msg_tx) {
+                        if !self.update(TerminalEvent::Key(key), &message_sender) {
                             break;
                         }
                     }
                     _ => {}
                 },
-                Some(msg) = msg_rx.recv() => {
-                    if !self.update(TerminalEvent::Message(msg), &msg_tx) {
+                Some(msg) = message_receiver.recv() => {
+                    if !self.update(TerminalEvent::Message(msg), &message_sender) {
                         break;
                     }
                 }

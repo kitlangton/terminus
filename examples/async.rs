@@ -1,8 +1,5 @@
 use crossterm::event::*;
-use terminus::{
-    terminal_app::{AsyncTerminalApp, AsyncTerminalAppExt, TerminalEvent},
-    *,
-};
+use terminus::*;
 use tokio::sync::mpsc;
 
 struct SimpleAsyncApp {
@@ -68,6 +65,8 @@ impl AsyncTerminalApp for SimpleAsyncApp {
             hstack(("CHARGING: ", hstack(("|", slots, "|")).spacing(0).color(Color::Red)))
         });
         vstack((hstack(("Count:", count)), charging, vstack(children)))
+            .border()
+            .border_style(BorderStyle::Rounded)
     }
 
     fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {

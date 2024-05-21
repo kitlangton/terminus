@@ -7,6 +7,7 @@ pub struct Border<V> {
     pub(crate) child: V,
     pub(crate) border_color: Color,
     pub(crate) border_style: BorderStyle,
+    pub(crate) title: Option<String>,
 }
 
 impl<V> private::Sealed for Border<V> {}
@@ -16,7 +17,8 @@ impl<V> Border<V> {
         Self {
             child,
             border_color,
-            border_style: BorderStyle::Single, // Default to Single
+            border_style: BorderStyle::Single,
+            title: None,
         }
     }
 
@@ -27,6 +29,11 @@ impl<V> Border<V> {
 
     pub fn border_style(mut self, border_style: BorderStyle) -> Self {
         self.border_style = border_style;
+        self
+    }
+
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
         self
     }
 
@@ -62,6 +69,24 @@ impl<V> Border<V> {
         // Draw vertical lines
         draw_vertical_line(buffer, left, top + 1, bottom_y, components.vertical, self.border_color);
         draw_vertical_line(buffer, right, top + 1, bottom_y, components.vertical, self.border_color);
+
+        if let Some(ref title) = self.title {
+            title.render(
+                RenderContext {
+                    rect: Rect {
+                        point: Point { x: left + 1, y: top },
+                        size: Size {
+                            width: rect.size.width - 2,
+                            height: 1,
+                        },
+                    },
+                    fg: self.border_color,
+                    bg: Color::Reset,
+                    modifier: Modifier::empty(),
+                },
+                buffer,
+            );
+        }
     }
 }
 
@@ -69,6 +94,7 @@ impl<V> Border<V> {
 pub enum BorderStyle {
     Single,
     Double,
+    Rounded,
 }
 
 impl BorderStyle {
@@ -76,6 +102,7 @@ impl BorderStyle {
         match self {
             BorderStyle::Single => &SINGLE_BORDER_COMPONENTS,
             BorderStyle::Double => &DOUBLE_BORDER_COMPONENTS,
+            BorderStyle::Rounded => &ROUNDED_BORDER_COMPONENTS,
         }
     }
 }
@@ -105,6 +132,15 @@ const DOUBLE_BORDER_COMPONENTS: BorderComponents = BorderComponents {
     bottom_right: '╝',
     horizontal: '═',
     vertical: '║',
+};
+
+const ROUNDED_BORDER_COMPONENTS: BorderComponents = BorderComponents {
+    top_left: '╭',
+    top_right: '╮',
+    bottom_left: '╰',
+    bottom_right: '╯',
+    horizontal: '─',
+    vertical: '│',
 };
 
 fn draw_horizontal_line(buffer: &mut Buffer, y: u16, start_x: u16, end_x: u16, char: char, color: Color) {
@@ -198,5 +234,17 @@ mod tests {
         ];
         assert_eq!(outer_view.size(Size::max()), Size { width: 14, height: 5 });
         assert_rendered_view(outer_view, expected_output, 14, 5);
+    }
+
+    #[test]
+    fn test_title() {
+        let view = text("Titled View").border().title("Title");
+        let expected_output = vec![
+            "┌Title────────┐", //
+            "│ Titled View │", //
+            "└─────────────┘", //
+        ];
+        assert_eq!(view.size(Size::max()), Size { width: 15, height: 3 });
+        assert_rendered_view(view, expected_output, 15, 3);
     }
 }

@@ -25,19 +25,11 @@ impl Buffer {
         &mut self.cells[index as usize]
     }
 
-    pub fn set_char_at(
-        &mut self,
-        x: u16,
-        y: u16,
-        ch: char,
-        fg: Color,
-        bg: Color,
-        modifier: Modifier,
-    ) {
+    pub fn set_char_at(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Color, modifier: Modifier) {
         let index = self.point_to_index(x, y, self.size.width);
         if index < self.cells.len() as u16 {
             self.cells[index as usize] = Cell {
-                symbol: ch.to_string(),
+                symbol: ch.to_string().into(),
                 fg,
                 bg,
                 modifier,
