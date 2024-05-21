@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crossterm::event::*;
 use terminus::{
     terminal_app::{AsyncTerminalApp, AsyncTerminalAppExt, TerminalEvent},
@@ -90,5 +88,5 @@ async fn main() {
         super_charge: None,
     };
 
-    app.execute().await;
+    app.execute(false).await;
 }

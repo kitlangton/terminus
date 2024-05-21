@@ -180,5 +180,5 @@ async fn main() {
         todo_index: 0,
     };
 
-    app.execute().await;
+    app.execute(false).await;
 }

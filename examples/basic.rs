@@ -30,5 +30,5 @@ impl SyncTerminalApp for SimpleApp {
 
 fn main() {
     let mut app = SimpleApp { count: 5 };
-    app.execute();
+    app.execute(false);
 }

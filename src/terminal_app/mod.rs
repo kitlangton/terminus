@@ -12,6 +12,8 @@ use tokio::sync::mpsc;
 use raw_mode_guard::RawModeGuard;
 use renderer::*;
 
+use self::{fullscreen_renderer::FullScreenRenderer, inline_renderer::InlineRenderer};
+
 pub enum TerminalEvent<M> {
     Key(KeyEvent),
     Message(M),
@@ -50,12 +52,16 @@ pub struct VecWriter {
 
 #[async_trait]
 pub trait AsyncTerminalAppExt: AsyncTerminalApp {
-    async fn execute(&mut self) {
+    async fn execute(&mut self, use_full_screen: bool) {
         let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Self::Message>();
         let (event_tx, mut event_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
-        let mut renderer = Renderer::new(stdout());
+        let mut renderer = if use_full_screen {
+            SomeRenderer::FullScreen(FullScreenRenderer::new(stdout()))
+        } else {
+            SomeRenderer::Inline(InlineRenderer::new(stdout()))
+        };
         let event_task = handle_event(event_tx);
-        let _guard = RawModeGuard::new();
+        let _guard = RawModeGuard::new(true);
 
         loop {
             renderer.render(&self.render());
@@ -82,7 +88,7 @@ pub trait AsyncTerminalAppExt: AsyncTerminalApp {
         if let Some(view) = self.handle_exit() {
             renderer.render(&view);
         }
-        renderer.move_cursor_to_bottom_of_current_view();
+        // renderer.move_cursor_to_bottom_of_current_view();
 
         event_task.abort();
         event_task.await.unwrap_err();
@@ -101,9 +107,14 @@ pub trait SyncTerminalApp {
 }
 
 pub trait SyncTerminalAppExt: SyncTerminalApp {
-    fn execute(&mut self) {
-        let mut renderer = Renderer::new(stdout());
-        let _guard = RawModeGuard::new();
+    fn execute(&mut self, use_full_screen: bool) {
+        let mut renderer = if use_full_screen {
+            SomeRenderer::FullScreen(FullScreenRenderer::new(stdout()))
+        } else {
+            SomeRenderer::Inline(InlineRenderer::new(stdout()))
+        };
+
+        let _guard = RawModeGuard::new(false);
         loop {
             renderer.render(&self.render());
             let event = crossterm::event::read().unwrap();
