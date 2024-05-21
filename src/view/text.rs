@@ -63,7 +63,7 @@ impl View for String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::buffer::{Buffer, Point, Rect, Size};
+    use crate::buffer::*;
     use crate::view::RenderContext;
 
     #[test]

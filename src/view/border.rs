@@ -24,9 +24,13 @@ impl<V> Border<V> {
         buffer.get_mut(x, y).set_symbol(&symbol.to_string()).set_fg(color);
     }
 
-    fn draw_borders(&self, buffer: &mut Buffer, size: Size, left: u16, top: u16, bottom_y: u16) {
+    fn draw_borders(&self, buffer: &mut Buffer, rect: Rect) {
+        let left = rect.left();
+        let top = rect.top();
+        let right = rect.right() - 1;
+        let bottom_y = rect.bottom() - 1;
+
         // Draw corners
-        let right = left + size.width - 1;
         Self::draw_corner(buffer, left, top, TOP_LEFT, self.border_color);
         Self::draw_corner(buffer, right, top, TOP_RIGHT, self.border_color);
         Self::draw_corner(buffer, left, bottom_y, BOTTOM_LEFT, self.border_color);
@@ -70,23 +74,17 @@ impl<V: View> View for Border<V> {
 
     fn render(&self, context: RenderContext, buffer: &mut Buffer) {
         let size = self.size(context.rect.size);
-        let top = context.rect.top();
-        let left = context.rect.left();
-        let bottom_y = top + size.height - 1;
-
-        // Calculate the inner rectangle for the child view
-        let inner_rect = Rect {
-            point: Point {
-                x: left + 2,
-                y: top + 1,
-            },
-            size: size.inset_by(2, 2, 1, 1),
+        let border_rect = Rect {
+            point: context.rect.point,
+            size,
         };
+
+        let inner_rect = border_rect.inset_by(2, 2, 1, 1);
 
         // Render the child view within the inner rectangle
         self.child.render(RenderContext::new(inner_rect), buffer);
 
-        self.draw_borders(buffer, size, left, top, bottom_y);
+        self.draw_borders(buffer, border_rect);
     }
 }
 
