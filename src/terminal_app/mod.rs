@@ -44,8 +44,6 @@ fn handle_event(tx: mpsc::UnboundedSender<crossterm::event::Event>) -> tokio::ta
     })
 }
 
-use std::io::{self, Write};
-
 pub struct VecWriter {
     buffer: Vec<u8>,
 }

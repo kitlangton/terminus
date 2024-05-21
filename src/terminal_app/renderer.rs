@@ -15,14 +15,19 @@ use crate::{RenderContext, View};
 
 pub(crate) struct Renderer<W: Write> {
     writer: W,
+    /// Double Buffer
     current_buffer: Buffer,
     prev_buffer: Buffer,
+    /// The height of the last rendered view
     view_height: u16,
+    /// The tallest view ever rendered
     claimed_height: u16,
+    /// The size of the terminal
     terminal_size: Size,
 }
 
 impl<W: Write> Renderer<W> {
+    /// Creates a new `Renderer` with the given writer.
     pub(crate) fn new(writer: W) -> Self {
         let (terminal_width, terminal_height) = crossterm::terminal::size().unwrap();
         let terminal_size = Size::new(terminal_width, terminal_height);
@@ -38,6 +43,7 @@ impl<W: Write> Renderer<W> {
         }
     }
 
+    /// Renders the given view to the terminal.
     pub(crate) fn render(&mut self, view: &impl View) {
         self.swap_buffers();
         let Size {
@@ -59,6 +65,8 @@ impl<W: Write> Renderer<W> {
         self.print_buffer().unwrap();
     }
 
+    /// Moves the cursor to the bottom of the current view.
+    /// This is intended to be called before exiting the program.
     pub(crate) fn move_cursor_to_bottom_of_current_view(&mut self) {
         let target = self.terminal_size.height.saturating_sub(self.claimed_height) + self.view_height;
         queue!(self.writer, MoveTo(0, target), Print("\n")).unwrap();
@@ -83,17 +91,18 @@ impl<W: Write> Renderer<W> {
         }
     }
 
+    /// Prints the current buffer to the terminal.
     fn print_buffer(&mut self) -> io::Result<()> {
+        // Diff the current buffer with the previous buffer
+        // Returns the x, y, and cell for each diff
         let diff = self.current_buffer.diff(&self.prev_buffer);
+
         let mut last_fg = Color::Reset;
         let mut last_bg = Color::Reset;
         let mut last_modifier = Modifier::empty();
-        let mut last_x = u16::MAX;
-        let mut last_y = u16::MAX;
+        let (mut last_x, mut last_y) = (u16::MAX, u16::MAX);
 
         for (x, y, cell) in diff {
-            let modifier = cell.modifier;
-
             if cell.fg != last_fg {
                 queue!(self.writer, SetForegroundColor(cell.fg.into()))?;
                 last_fg = cell.fg;
@@ -104,9 +113,9 @@ impl<W: Write> Renderer<W> {
                 last_bg = cell.bg;
             }
 
-            if modifier != last_modifier {
-                Modifier::write_diff(modifier, last_modifier, &mut self.writer);
-                last_modifier = modifier;
+            if cell.modifier != last_modifier {
+                Modifier::write_diff(cell.modifier, last_modifier, &mut self.writer);
+                last_modifier = cell.modifier;
             }
 
             if last_x + 1 != x || last_y != y {
@@ -114,8 +123,7 @@ impl<W: Write> Renderer<W> {
             }
             queue!(self.writer, Print(&cell.symbol))?;
 
-            last_x = x;
-            last_y = y;
+            (last_x, last_y) = (x, y);
         }
 
         // Reset colors and attributes at the end

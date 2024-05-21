@@ -29,3 +29,49 @@ impl View for Text {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::buffer::{Buffer, Point, Rect, Size};
+    use crate::view::RenderContext;
+
+    #[test]
+    fn test_text_size() {
+        let text = Text {
+            text: "Hello".to_string(),
+        };
+        let expected_size = Size::new(5, 1);
+        assert_eq!(text.size(Size::max()), expected_size);
+    }
+
+    #[test]
+    fn test_text_render() {
+        let text = Text {
+            text: "Hello".to_string(),
+        };
+        let mut buffer = Buffer::new(10, 1);
+        let rect = Rect::new(0, 0, 10, 1);
+        let context = RenderContext::new(rect);
+        text.render(context, &mut buffer);
+
+        let expected_output = "Hello     ";
+        let result: String = buffer.as_str();
+        assert_eq!(result, expected_output);
+    }
+
+    #[test]
+    fn test_text_render_truncated() {
+        let text = Text {
+            text: "Hello, World!".to_string(),
+        };
+        let mut buffer = Buffer::new(5, 1);
+        let rect = Rect::new(0, 0, 5, 1);
+        let context = RenderContext::new(rect);
+        text.render(context, &mut buffer);
+
+        let expected_output = "Hello";
+        let result: String = buffer.as_str();
+        assert_eq!(result, expected_output);
+    }
+}

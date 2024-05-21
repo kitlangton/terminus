@@ -17,7 +17,7 @@ mod tests;
 ///
 /// # Examples
 /// ```
-/// use meld::view::*;
+/// use terminus::*;
 /// let view = text("Hello There");
 /// ```
 ///
@@ -25,16 +25,14 @@ mod tests;
 /// ---------------
 /// Hello There
 pub fn text(text: &str) -> Text {
-    Text {
-        text: text.to_string(),
-    }
+    Text { text: text.to_string() }
 }
 
 /// Creates a vertical stack view
 ///
 /// # Examples
 /// ```
-/// use meld::view::*;
+/// use terminus::*;
 /// let view = vstack((
 ///     text("Hello"),
 ///     text("There"),
@@ -57,7 +55,7 @@ pub fn vstack<VT: ViewTuple>(children: VT) -> Stack<VT> {
 ///
 /// # Examples
 /// ```
-/// use meld::view::*;
+/// use terminus::*;
 /// let view = hstack((
 ///     text("Tick"),
 ///     text("Tock"),
@@ -82,9 +80,7 @@ pub struct AnyView {
 
 impl AnyView {
     pub fn new(view: impl View + 'static) -> Self {
-        AnyView {
-            view: Arc::new(view),
-        }
+        AnyView { view: Arc::new(view) }
     }
 }
 

@@ -29,7 +29,7 @@ use self::border::Border;
 /// ---------------
 /// Example of a VStack with nested HStacks
 /// ```
-/// use meld::view::*;
+/// use terminus::*;
 /// let view = vstack((
 ///     hstack((text("1."), text("Eggs"))),
 ///     hstack((text("2."), text("Powders"))),
@@ -114,6 +114,17 @@ pub trait ViewExtensions: View + Sized {
 
     fn underline(self) -> ContextModifier<Self> {
         ContextModifier::modifier(self, Modifier::UNDERLINE)
+    }
+
+    fn underline_when(self, condition: bool) -> ContextModifier<Self> {
+        ContextModifier::modifier(
+            self,
+            if condition {
+                Modifier::UNDERLINE
+            } else {
+                Modifier::empty()
+            },
+        )
     }
 
     fn dim(self) -> ContextModifier<Self> {
