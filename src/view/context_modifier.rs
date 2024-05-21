@@ -8,6 +8,8 @@ pub struct ContextModifier<V> {
     pub(crate) modifier: Option<Modifier>,
 }
 
+impl<V> private::Sealed for ContextModifier<V> {}
+
 impl<V: View> ContextModifier<V> {
     pub(crate) fn modifier(child: V, modifier: Modifier) -> Self {
         Self {

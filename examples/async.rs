@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crossterm::event::*;
 use terminus::{
     terminal_app::{AsyncTerminalApp, AsyncTerminalAppExt, TerminalEvent},
-    view_tuple::ViewSeq,
     *,
 };
 use tokio::sync::mpsc;
@@ -64,18 +63,13 @@ impl AsyncTerminalApp for SimpleAsyncApp {
     fn render(&self) -> impl View {
         let count = self.count.to_string();
 
-        // for the numbers 0 through count, have a Vec of text(<index>)
-        let children = ViewSeq::new(
-            (0..self.count)
-                .map(|i| Arc::new(text(&i.to_string())) as _)
-                .collect::<Vec<_>>(),
-        );
+        let children = (0..self.count).map(|i| text(&i.to_string())).collect::<Vec<_>>();
 
         let charging = self.super_charge.map(|c| {
             let slots: String = "=".repeat(c) + &" ".repeat(10 - c);
-            hstack((text("CHARGING: |"), text(&slots), text("|"))).spacing(0)
+            hstack(("CHARGING: ", hstack(("|", slots, "|")).spacing(0).color(Color::Red)))
         });
-        vstack((hstack((text("Count:"), text(&count))), charging, vstack(children)))
+        vstack((hstack(("Count:", count)), charging, vstack(children)))
     }
 
     fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {

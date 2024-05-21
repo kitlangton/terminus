@@ -9,6 +9,8 @@ pub struct Stack<VT> {
     pub(crate) spacing: u16,
 }
 
+impl<VT> private::Sealed for Stack<VT> {}
+
 impl<VT: ViewTuple> Stack<VT> {
     pub fn new(children: VT, direction: Direction, spacing: u16) -> Self {
         Self {

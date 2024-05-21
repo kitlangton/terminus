@@ -42,10 +42,14 @@ use self::border::Border;
 /// | 2. Powders     |
 /// | 3. Milk        |
 /// +----------------+
-pub trait View {
+pub trait View: private::Sealed {
     fn size(&self, proposed: Size) -> Size;
 
     fn render(&self, context: RenderContext, buffer: &mut Buffer);
+}
+
+pub(crate) mod private {
+    pub trait Sealed {}
 }
 
 pub trait ViewExtensions: View + Sized {
@@ -151,6 +155,8 @@ pub trait ViewExtensions: View + Sized {
 
 impl<T: View> ViewExtensions for T {}
 
+impl<V> private::Sealed for Option<V> {}
+
 impl<V: View> View for Option<V> {
     fn size(&self, proposed: Size) -> Size {
         match self {
@@ -208,6 +214,8 @@ pub struct IfThenElse<T: View, F: View> {
     pub falseView: F,
 }
 
+impl<T: View, F: View> private::Sealed for IfThenElse<T, F> {}
+
 impl<T: View, F: View> View for IfThenElse<T, F> {
     fn size(&self, proposed: Size) -> Size {
         if self.condition {
@@ -235,6 +243,8 @@ pub fn if_then_else_view<T: View, F: View>(condition: bool, trueView: T, falseVi
 }
 
 pub struct EmptyView;
+
+impl private::Sealed for EmptyView {}
 
 impl View for EmptyView {
     fn size(&self, proposed: Size) -> Size {

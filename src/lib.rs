@@ -78,6 +78,8 @@ pub struct AnyView {
     view: Arc<dyn View>,
 }
 
+impl private::Sealed for AnyView {}
+
 impl AnyView {
     pub fn new(view: impl View + 'static) -> Self {
         AnyView { view: Arc::new(view) }

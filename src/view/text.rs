@@ -7,6 +7,8 @@ pub struct Text {
     pub(crate) text: String,
 }
 
+impl private::Sealed for Text {}
+
 impl View for Text {
     fn size(&self, proposed: Size) -> Size {
         Size {
@@ -27,6 +29,34 @@ impl View for Text {
             buffer.set_char_at(x, y, c, context.fg, context.bg, context.modifier);
             x += 1;
         }
+    }
+}
+
+impl private::Sealed for &str {}
+
+impl View for &str {
+    fn size(&self, proposed: Size) -> Size {
+        let text = Text { text: self.to_string() };
+        text.size(proposed)
+    }
+
+    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+        let text = Text { text: self.to_string() };
+        text.render(context, buffer);
+    }
+}
+
+impl private::Sealed for String {}
+
+impl View for String {
+    fn size(&self, proposed: Size) -> Size {
+        let text = Text { text: self.to_string() };
+        text.size(proposed)
+    }
+
+    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+        let text = Text { text: self.to_string() };
+        text.render(context, buffer);
     }
 }
 

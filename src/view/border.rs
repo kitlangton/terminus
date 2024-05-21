@@ -8,6 +8,8 @@ pub struct Border<V> {
     pub(crate) border_color: Color,
 }
 
+impl<V> private::Sealed for Border<V> {}
+
 impl<V> Border<V> {
     pub fn new(child: V, border_color: Color) -> Self {
         Self { child, border_color }

@@ -11,6 +11,8 @@ pub struct Padding<V: View> {
     pub(crate) padding_right: u16,
 }
 
+impl<V: View> private::Sealed for Padding<V> {}
+
 impl<V: View> View for Padding<V> {
     fn size(&self, proposed: Size) -> Size {
         let inset = proposed.inset_by(

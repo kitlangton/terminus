@@ -34,39 +34,17 @@ macro_rules! views {
     }
 }
 
-#[derive(Clone)]
-pub struct Views<V> {
-    views: Vec<V>,
-}
-
-impl<V> Views<V> {
-    pub fn new(views: Vec<V>) -> Self {
-        Self { views }
-    }
-}
-
-impl<V: View> ViewTuple for Views<V> {
+impl<V: View> ViewTuple for Vec<V> {
     fn for_each<F: FnMut(&dyn View)>(&self, mut f: F) {
-        for view in &self.views {
+        for view in self {
             f(view)
         }
     }
 }
 
-#[derive(Clone)]
-pub struct ViewSeq {
-    views: Vec<Arc<dyn View>>,
-}
-
-impl ViewSeq {
-    pub fn new(views: Vec<Arc<dyn View>>) -> Self {
-        Self { views }
-    }
-}
-
-impl ViewTuple for ViewSeq {
+impl ViewTuple for Vec<Arc<dyn View>> {
     fn for_each<F: FnMut(&dyn View)>(&self, mut f: F) {
-        for view in &self.views {
+        for view in self {
             f(view.as_ref())
         }
     }
@@ -90,24 +68,13 @@ impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V1
 impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16);
 impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17);
 impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18);
+impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19);
+impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20);
+impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21);
+impl_view_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21, V22);
 impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21, V22, V23
 );
 impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20
-);
-impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21
-);
-impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
-    V22
-);
-impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
-    V22, V23
-);
-impl_view_tuple!(
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
-    V22, V23, V24
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21, V22, V23, V24
 );

@@ -7,7 +7,6 @@ use std::sync::Arc;
 use crossterm::event::*;
 use terminus::{
     terminal_app::{SyncTerminalApp, SyncTerminalAppExt},
-    view_tuple::ViewSeq,
     *,
 };
 
@@ -16,12 +15,7 @@ impl SyncTerminalApp for SimpleApp {
         let count = self.count.to_string();
 
         // for the numbers 0 through count, have a Vec of text(<index>)
-        let children = ViewSeq::new(
-            (0..self.count)
-                .map(|i| Arc::new(text(&i.to_string())) as _)
-                .collect::<Vec<_>>(),
-        );
-
+        let children: Vec<Text> = (0..self.count).map(|i| text(&i.to_string())).collect::<Vec<_>>();
         vstack((hstack((text("Count:"), text(&count))), vstack(children)))
     }
 

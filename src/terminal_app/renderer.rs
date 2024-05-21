@@ -100,7 +100,7 @@ impl<W: Write> Renderer<W> {
         let mut last_fg = Color::Reset;
         let mut last_bg = Color::Reset;
         let mut last_modifier = Modifier::empty();
-        let (mut last_x, mut last_y) = (u16::MAX, u16::MAX);
+        let (mut last_x, mut last_y) = (u16::MAX - 1, u16::MAX - 1);
 
         for (x, y, cell) in diff {
             if cell.fg != last_fg {

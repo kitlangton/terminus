@@ -104,13 +104,13 @@ impl TodoApp {
     }
 
     fn render_todos(&self) -> impl View {
-        vstack(Views::new(
+        vstack(
             self.todos
                 .iter()
                 .enumerate()
                 .map(|(index, todo)| self.render_todo(index, todo))
-                .collect(),
-        ))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -121,7 +121,7 @@ impl AsyncTerminalApp for TodoApp {
         let todos = self.render_todos();
 
         let input_view = if let AppMode::Adding = self.mode {
-            hstack((text("Input:"), text(&self.input))).as_any()
+            hstack(("Input:", self.input.clone())).as_any()
         } else {
             empty().as_any()
         };
