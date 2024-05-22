@@ -1,4 +1,5 @@
 pub mod border;
+pub mod frame;
 pub mod padding;
 pub mod stack;
 pub mod text;
@@ -8,6 +9,7 @@ use crate::*;
 pub use border::{Border, BorderStyle};
 pub use buffer::*;
 pub use context_modifier::*;
+pub use frame::*;
 pub use padding::*;
 pub use stack::*;
 pub use text::*;
@@ -41,6 +43,24 @@ pub(crate) mod private {
 }
 
 pub trait ViewExtensions: View + Sized {
+    fn frame(
+        self,
+        min_width: Option<u16>,
+        min_height: Option<u16>,
+        max_width: Option<u16>,
+        max_height: Option<u16>,
+        alignment: Alignment,
+    ) -> Frame<Self> {
+        Frame {
+            child: self,
+            min_width,
+            min_height,
+            max_width,
+            max_height,
+            alignment,
+        }
+    }
+
     fn border(self) -> Border<Self> {
         Border {
             child: self,
@@ -184,6 +204,23 @@ impl RenderContext {
 
     fn with_rect(&self, rect: Rect) -> Self {
         Self { rect, ..self.clone() }
+    }
+
+    fn with_size(&self, size: Size) -> Self {
+        Self {
+            rect: Rect {
+                point: self.rect.point,
+                size,
+            },
+            ..self.clone()
+        }
+    }
+
+    pub fn offset(&self, offset_x: u16, offset_y: u16) -> RenderContext {
+        Self {
+            rect: self.rect.offset(offset_x, offset_y),
+            ..self.clone()
+        }
     }
 }
 

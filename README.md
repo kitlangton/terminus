@@ -1,4 +1,4 @@
-# `terminus`
+# (alT(r)UI(s)t)
 
 A TUI library for Rust. Or, rather, for me to learn Rust by writing a TUI library.
 

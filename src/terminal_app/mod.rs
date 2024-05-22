@@ -24,8 +24,10 @@ pub trait AsyncTerminalApp {
     fn render(&self) -> impl View;
     fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool;
 
+    /// Called when the terminal app is first initialized
     fn init(&mut self, tx: &mpsc::UnboundedSender<Self::Message>) {}
 
+    /// Called when the terminal app is exited
     fn handle_exit(&self) -> Option<impl View> {
         None as Option<EmptyView>
     }
@@ -63,7 +65,7 @@ pub trait AsyncTerminalAppExt: AsyncTerminalApp {
             SomeRenderer::Inline(InlineRenderer::new(stdout()))
         };
         let event_task = handle_event(terminal_event_sender);
-        let _guard = RawModeGuard::new(true);
+        let _guard = RawModeGuard::new(use_full_screen);
 
         self.init(&message_sender);
 

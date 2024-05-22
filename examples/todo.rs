@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crossterm::event::*;
 use terminus::*;
 use tokio::sync::mpsc;
@@ -138,7 +136,13 @@ impl AsyncTerminalApp for TodoApp {
         ))
         .spacing(2);
 
-        vstack((text("Todos:").bold().underline(), todos, input_view, commands_view)).border()
+        vstack((
+            todos.frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::TOP_LEFT),
+            input_view,
+            commands_view,
+        ))
+        .border()
+        .title(" TODOS ")
     }
 
     fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
@@ -180,5 +184,5 @@ async fn main() {
         todo_index: 0,
     };
 
-    app.execute(false).await;
+    app.execute(true).await;
 }

@@ -8,6 +8,13 @@ impl Point {
     pub fn zero() -> Point {
         Point { x: 0, y: 0 }
     }
+
+    pub fn offset(self, offset_x: u16, offset_y: u16) -> Point {
+        Point {
+            x: self.x + offset_x,
+            y: self.y + offset_y,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +68,13 @@ impl Rect {
                 .outset_by(outset_left, outset_right, outset_top, outset_bottom),
         }
     }
+
+    pub(crate) fn offset(self, offset_x: u16, offset_y: u16) -> Rect {
+        Rect {
+            point: self.point.offset(offset_x, offset_y),
+            size: self.size,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +101,11 @@ impl Size {
             height: u16::MAX,
         }
     }
+
+    pub const MAX: Size = Size {
+        width: u16::MAX,
+        height: u16::MAX,
+    };
 
     /// Reduces the size by the given inset on all sides.
     ///
