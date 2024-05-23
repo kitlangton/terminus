@@ -2,30 +2,36 @@ use std::fmt::Display;
 
 use terminus::*;
 
+#[tokio::main]
+async fn main() {
+    let mut app = TourApp::default();
+    app.execute(true).await;
+}
+
 #[derive(Clone, Copy, PartialEq)]
 enum Tab {
     ZStack,
     Frame,
-    Stack,
+    List,
 }
 
 impl Display for Tab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             Tab::Frame => "Frame",
-            Tab::Stack => "Stack",
+            Tab::List => "List",
             Tab::ZStack => "ZStack",
         };
         write!(f, "{}", s)
     }
 }
 
-const TABS: [Tab; 3] = [Tab::Frame, Tab::Stack, Tab::ZStack];
-
 impl Tab {
+    const ALL: [Tab; 3] = [Tab::Frame, Tab::List, Tab::ZStack];
+
     fn next(&self) -> Self {
-        let index = TABS.iter().position(|x| x == self).unwrap();
-        TABS[(index + 1) % TABS.len()]
+        let index = Self::ALL.iter().position(|x| x == self).unwrap();
+        Self::ALL[(index + 1) % Self::ALL.len()]
     }
 }
 
@@ -41,7 +47,37 @@ struct TourApp {
     tab: Tab,
     frame_tab: FrameTab,
     zstack_tab: ZStackTab,
+    list_tab: ListTab,
     tick: usize,
+}
+
+impl Default for TourApp {
+    fn default() -> Self {
+        Self {
+            tab: Tab::List,
+            frame_tab: FrameTab {
+                alignment: Alignment::CENTER,
+            },
+            zstack_tab: ZStackTab {
+                alignment: Alignment::TOP,
+            },
+            list_tab: ListTab {
+                selected_index: 0,
+                items: vec![
+                    "Buy Milk".to_string(),
+                    "Buy Bread".to_string(),
+                    "Buy Cheese".to_string(),
+                    "Buy Butter".to_string(),
+                    "Buy Eggs".to_string(),
+                    "Buy Flour".to_string(),
+                    "Buy Sugar".to_string(),
+                    "Buy Salt".to_string(),
+                    "Buy Water".to_string(),
+                ],
+            },
+            tick: 0,
+        }
+    }
 }
 
 enum Message {
@@ -54,18 +90,11 @@ impl AsyncTerminalApp for TourApp {
     fn render(&self) -> impl View {
         let main_view = match self.tab {
             Tab::Frame => frame_tab_view(&self.frame_tab).as_any(),
-            Tab::Stack => "STACK".as_any(),
+            Tab::List => list_tab_view(&self.list_tab).as_any(),
             Tab::ZStack => stack_tab_view(self.tick, &self.zstack_tab).as_any(),
         };
 
-        let tab_title = self.tab.to_string().to_uppercase();
-        let current_frame_tick = format!("Frame Tick: {}", self.tick);
-
-        vstack((
-            current_frame_tick,
-            main_view.border().border_style(BorderStyle::Rounded).title(tab_title),
-            tab_bar_view(self.tab),
-        ))
+        vstack((main_view, tab_bar_view(self.tab)))
     }
 
     fn update(
@@ -75,13 +104,17 @@ impl AsyncTerminalApp for TourApp {
     ) -> bool {
         match event {
             Event::Key(key_event) => {
+                if key_event.code == KeyCode::Char('q') {
+                    return false;
+                }
+
                 if key_event.code == KeyCode::Tab {
                     self.tab = self.tab.next();
                 }
 
                 match self.tab {
                     Tab::Frame => handle_key_frame_tab(&mut self.frame_tab, key_event),
-                    Tab::Stack => (),
+                    Tab::List => handle_key_list_tab(&mut self.list_tab, key_event),
                     Tab::ZStack => handle_key_zstack_tab(&mut self.zstack_tab, key_event),
                 }
             }
@@ -95,7 +128,7 @@ impl AsyncTerminalApp for TourApp {
     fn init(&mut self, sender: &tokio::sync::mpsc::UnboundedSender<Self::Message>) {
         let sender_clone = sender.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(17));
             loop {
                 interval.tick().await;
                 sender_clone.send(Message::Tick).unwrap();
@@ -106,7 +139,7 @@ impl AsyncTerminalApp for TourApp {
 
 /// Renders the tabs for the main view. The active tab is green and underlined.
 fn tab_bar_view(tab: Tab) -> impl View {
-    let tabs = TABS
+    let tabs = Tab::ALL
         .iter()
         .map(|t| {
             let is_active = *t == tab;
@@ -122,14 +155,106 @@ fn tab_bar_view(tab: Tab) -> impl View {
         .title(" TABS ")
 }
 
+/// FRAME TAB
+
+fn handle_key_frame_tab(tab: &mut FrameTab, event: KeyEvent) {
+    tab.alignment = modify_alignment_with_key(tab.alignment, event.code);
+}
+
 fn frame_tab_view(frame_tab: &FrameTab) -> impl View {
-    vstack(("FRAME", format!("Alignment: {}", frame_tab.alignment).green())).frame(
-        None,
-        None,
-        Some(u16::MAX),
-        Some(u16::MAX),
-        frame_tab.alignment,
-    )
+    vstack(("FRAME", format!("Alignment: {}", frame_tab.alignment).green()))
+        .alignment(frame_tab.alignment.horizontal)
+        .frame(None, None, Some(u16::MAX), Some(u16::MAX), frame_tab.alignment)
+        .border()
+        .border_style(BorderStyle::Rounded)
+        .title(" FRAME ")
+}
+
+/// LIST TAB
+
+pub struct ListTab {
+    selected_index: usize,
+    items: Vec<String>,
+}
+
+pub fn handle_key_list_tab(tab: &mut ListTab, event: KeyEvent) {
+    match event.code {
+        KeyCode::Down => tab.selected_index = tab.selected_index.saturating_add(1).clamp(0, tab.items.len() - 1),
+        KeyCode::Up => tab.selected_index = tab.selected_index.saturating_sub(1).clamp(0, tab.items.len() - 1),
+        _ => (),
+    }
+}
+
+pub fn list_tab_view(list_tab: &ListTab) -> impl View {
+    let items = list_tab
+        .items
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            let is_active = i == list_tab.selected_index;
+            let color = if is_active { Color::Green } else { Color::Reset };
+            let message = if is_active { ">" } else { " " };
+            hstack((message.color(color), format!("ITEM {}", i).color(color), text(x)))
+        })
+        .collect::<Vec<_>>();
+
+    let selected_item = list_tab.items[list_tab.selected_index].clone();
+
+    let selected_item_info_view = vstack((
+        hstack(("SELECTED ITEM", selected_item.clone())),
+        format!("THE CURRENT ITEM IS {}", selected_item).green(),
+    ))
+    .fill_vertically()
+    .fill_horizontally();
+
+    hstack((
+        scroll_view(items, list_tab.selected_index)
+            .fill_vertically()
+            .border()
+            .border_style(BorderStyle::Rounded)
+            .title(" LIST "), //
+        selected_item_info_view
+            .border()
+            .border_style(BorderStyle::Rounded)
+            .title(" INFO "),
+    ))
+}
+
+// TODO: Improve this and pull it into the library.
+pub fn scroll_view<V: View + Clone>(views: Vec<V>, selected_index: usize) -> impl View {
+    with_size(move |available_size| {
+        let sizes = views.iter().map(|view| view.size(available_size)).collect::<Vec<_>>();
+
+        let mut start_offset = 0;
+        let mut end_offset = 0;
+
+        let mut includes_selected = false;
+
+        while !includes_selected {
+            let mut total_height = 0;
+            for (i, size) in sizes.iter().enumerate().skip(start_offset) {
+                total_height += size.height;
+                if total_height > available_size.height {
+                    break;
+                }
+                end_offset = i;
+            }
+
+            if (start_offset..=end_offset).contains(&selected_index) {
+                includes_selected = true;
+            } else {
+                start_offset += 1;
+            }
+        }
+
+        vstack(views[start_offset..=end_offset].to_vec())
+    })
+}
+
+/// ZSTACK TAB
+
+fn handle_key_zstack_tab(tab: &mut ZStackTab, event: KeyEvent) {
+    tab.alignment = modify_alignment_with_key(tab.alignment, event.code);
 }
 
 fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
@@ -151,10 +276,18 @@ fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
         VerticalAlignment::Bottom => Color::Red,
     };
 
-    let overlay = format!("I AM ON {} OF THE WORLD!", alignment_string)
-        .bold()
-        .padding(1)
-        .background(color_for_alignment);
+    let logo = vstack((
+        text("████████ ███████ ██████  ███    ███ ██ ███    ██ ██    ██ ███████"),
+        text("   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██    ██ ██     "),
+        text("   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ██    ██ ███████"),
+        text("   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██    ██      ██"),
+        text("   ██    ███████ ██   ██ ██      ██ ██ ██   ████  ██████  ███████"),
+    ))
+    .bold();
+
+    let overlay = hstack(("I AM ON ", alignment_string.underline(), " OF THE WORLD!"))
+        .spacing(0)
+        .bold();
 
     let background = with_size(move |size| {
         fn make_line(line_number: u16, width: u16, tick: usize) -> String {
@@ -171,31 +304,16 @@ fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
         )
     });
 
-    zstack((background.dim().red(), overlay)).alignment(tab.alignment)
-}
-
-#[tokio::main]
-async fn main() {
-    let mut app = TourApp {
-        tab: Tab::ZStack,
-        frame_tab: FrameTab {
-            alignment: Alignment::CENTER,
-        },
-        zstack_tab: ZStackTab {
-            alignment: Alignment::TOP,
-        },
-        tick: 0,
-    };
-
-    app.execute(true).await;
-}
-
-fn handle_key_zstack_tab(tab: &mut ZStackTab, event: KeyEvent) {
-    tab.alignment = modify_alignment_with_key(tab.alignment, event.code);
-}
-
-fn handle_key_frame_tab(tab: &mut FrameTab, event: KeyEvent) {
-    tab.alignment = modify_alignment_with_key(tab.alignment, event.code);
+    zstack((
+        background.dim().red(),
+        vstack((logo, overlay))
+            .alignment(tab.alignment.horizontal)
+            .color(color_for_alignment),
+    ))
+    .alignment(tab.alignment)
+    .border()
+    .border_style(BorderStyle::Rounded)
+    .title(" ZSTACK ")
 }
 
 fn modify_alignment_with_key(alignment: Alignment, code: KeyCode) -> Alignment {

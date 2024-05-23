@@ -5,7 +5,9 @@ use std::io::stdout;
 
 use crate::*;
 use async_trait::async_trait;
-use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{
+    Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind,
+};
 use futures::{FutureExt, StreamExt};
 use tokio::sync::mpsc;
 
@@ -108,11 +110,26 @@ pub trait AsyncTerminalAppExt: AsyncTerminalApp {
                 Some(event) = terminal_event_receiver.recv() => {
                     match event {
                         CrosstermEvent::Key(KeyEvent {
-                            code: KeyCode::Char('c'),
+                            code: KeyCode::Char('c' | 'd'),
                             modifiers: KeyModifiers::CONTROL,
                             ..
                         }) => break,
                         CrosstermEvent::Resize(w, h) => renderer.resize(w, h),
+                        CrosstermEvent::Mouse(MouseEvent { kind, .. }) => {
+                            match kind {
+                                MouseEventKind::ScrollDown => {
+                                    if !self.update(Event::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), &message_sender) {
+                                        break;
+                                    }
+                                }
+                                MouseEventKind::ScrollUp => {
+                                    if !self.update(Event::Key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)), &message_sender) {
+                                        break;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        },
                         CrosstermEvent::Key(key) => {
                             if !self.update(Event::Key(key), &message_sender) {
                                 break;
@@ -159,10 +176,15 @@ pub trait SyncTerminalAppExt: SyncTerminalApp {
             let event = crossterm::event::read().unwrap();
             match event {
                 CrosstermEvent::Key(KeyEvent {
-                    code: KeyCode::Char('c'),
+                    code: KeyCode::Char('c' | 'd'),
                     modifiers: KeyModifiers::CONTROL,
                     ..
                 }) => break,
+                CrosstermEvent::Mouse(MouseEvent { kind, .. }) => match kind {
+                    MouseEventKind::ScrollDown => self.update(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+                    MouseEventKind::ScrollUp => self.update(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)),
+                    _ => {}
+                },
                 CrosstermEvent::Resize(width, height) => {
                     renderer.resize(width, height);
                 }
@@ -173,8 +195,9 @@ pub trait SyncTerminalAppExt: SyncTerminalApp {
             }
         }
 
-        self.handle_exit();
-        renderer.render(&self.render());
+        if let Some(view) = self.handle_exit() {
+            renderer.render(&view);
+        }
         renderer.move_cursor_to_bottom_of_current_view();
     }
 }

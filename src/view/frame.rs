@@ -115,7 +115,7 @@ impl<V: View> View for Frame<V> {
         Size::new(width, height)
     }
 
-    fn render(&self, context: crate::RenderContext, buffer: &mut crate::Buffer) {
+    fn render(&self, context: crate::Context, buffer: &mut crate::Buffer) {
         let child_size = self.child.size(context.rect.size);
         let size = self.size(context.rect.size);
 

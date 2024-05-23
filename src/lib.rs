@@ -5,6 +5,7 @@ pub mod view;
 
 pub use buffer::Color;
 pub use terminal_app::*;
+use unicode_width::UnicodeWidthStr;
 pub use view::*;
 
 use std::sync::Arc;
@@ -26,7 +27,10 @@ pub use crossterm::event::{KeyCode, KeyEvent};
 /// ---------------
 /// Hello There
 pub fn text(text: &str) -> Text {
-    Text { text: text.to_string() }
+    Text {
+        text: text.to_string().into(),
+        width: text.width() as u16,
+    }
 }
 
 /// Creates a vertical stack view
@@ -70,7 +74,7 @@ pub fn hstack<VT: ViewTuple>(children: VT) -> HStack<VT> {
     HStack {
         children,
         spacing: 1,
-        alignment: VerticalAlignment::Center,
+        alignment: VerticalAlignment::Top,
     }
 }
 
@@ -105,7 +109,7 @@ impl AnyView {
 }
 
 impl View for AnyView {
-    fn render(&self, context: RenderContext, buffer: &mut buffer::Buffer) {
+    fn render(&self, context: Context, buffer: &mut buffer::Buffer) {
         self.view.render(context, buffer)
     }
 

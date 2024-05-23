@@ -11,7 +11,7 @@ use crossterm::{
     *,
 };
 
-use crate::{RenderContext, View};
+use crate::{Context, View};
 
 use super::Renderer;
 pub(crate) struct InlineRenderer<W: Write> {
@@ -75,7 +75,7 @@ impl<W: Write> InlineRenderer<W> {
 
         let start_y = self.terminal_size.height.saturating_sub(self.claimed_height).max(0);
         let rect = Rect::new(0, start_y, view_width, view_height);
-        view.render(RenderContext::new(rect), &mut self.current_buffer);
+        view.render(Context::new(rect), &mut self.current_buffer);
         self.view_height = view_height;
         self.print_buffer().unwrap();
     }

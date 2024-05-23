@@ -5,6 +5,7 @@ pub mod size;
 pub use cell::*;
 pub use color::*;
 pub use size::*;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Buffer {
@@ -35,13 +36,26 @@ impl Buffer {
         bg.map(|bg| cell.set_bg(bg));
     }
 
-    pub fn set_string_at(&mut self, x: u16, y: u16, s: &str, fg: Color, bg: Option<Color>, modifier: Modifier) {
+    pub fn set_string_at(
+        &mut self,
+        x: u16,
+        y: u16,
+        max_width: u16,
+        s: &str,
+        fg: Color,
+        bg: Option<Color>,
+        modifier: Modifier,
+    ) {
         let width = self.size.width;
         let mut index = self.point_to_index(x, y, width) as usize;
+        let end_index = index + max_width as usize;
 
-        for ch in s.chars() {
+        for grapheme in s.graphemes(true) {
+            if index >= end_index {
+                break;
+            }
             let cell = &mut self.cells[index];
-            cell.set_symbol(&ch.to_string()).set_fg(fg).set_modifier(modifier);
+            cell.set_symbol(grapheme).set_fg(fg).set_modifier(modifier);
             if let Some(bg_color) = bg {
                 cell.set_bg(bg_color);
             }

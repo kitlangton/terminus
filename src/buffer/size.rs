@@ -81,7 +81,7 @@ impl Rect {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Size {
     pub width: u16,
     pub height: u16,
@@ -154,7 +154,6 @@ impl Size {
     /// assert_eq!(min_size, Size { width: 10, height: 8 });
     /// ```
     pub fn min(&self, proposed: Size) -> Size {
-        // TODO: Is this name weird?
         Size {
             width: self.width.min(proposed.width),
             height: self.height.min(proposed.height),

@@ -18,18 +18,17 @@ impl<F> private::Sealed for GeometryReader<F> {}
 // f is a function from Size -> impl View
 impl<F, V: View> View for GeometryReader<F>
 where
-    F: Fn(Size) -> V,
+    F: Fn(Size) -> V + 'static,
 {
     fn size(&self, proposed: Size) -> Size {
         let f = &self.view;
         f(proposed).size(proposed)
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         let f = &self.view;
         let view = f(context.rect.size);
-        let size = view.size(context.rect.size);
-        view.render(context.with_size(size), buffer);
+        view.render(context, buffer);
     }
 }
 
@@ -46,7 +45,7 @@ impl<V: View, BG: View> View for Background<V, BG> {
         self.view.size(proposed)
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         let size = self.view.size(context.rect.size);
         self.background.render(context.with_size(size), buffer);
         self.view.render(context, buffer);
@@ -64,7 +63,7 @@ impl View for FillColor {
         proposed
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         let point = context.rect.point;
         let size = context.rect.size;
         for y in point.y..point.y + size.height {
@@ -103,7 +102,7 @@ impl<VT: ViewTuple> HStack<VT> {
         self
     }
 
-    fn layout(&self, proposed: Size) -> Vec<Size> {
+    fn layout(&self, proposed: Size) -> (Vec<Size>, u16, u16) {
         let mut sizes = vec![Size::zero(); self.children.length()];
 
         let mut views_with_flex = self
@@ -120,9 +119,11 @@ impl<VT: ViewTuple> HStack<VT> {
 
         let total = self.children.length();
         let mut remaining_width = proposed.width;
+        let mut total_width = 0;
+        let mut max_height = 0;
 
         views_with_flex
-            .iter()
+            .iter_mut()
             .enumerate()
             .for_each(|(i, (render_index, child, _))| {
                 let width = remaining_width / (total - i) as u16;
@@ -131,27 +132,30 @@ impl<VT: ViewTuple> HStack<VT> {
                     .saturating_sub(child_size.width)
                     .saturating_sub(self.spacing);
                 sizes[*render_index] = child_size;
+                total_width += child_size.width + self.spacing;
+                if child_size.height > max_height {
+                    max_height = child_size.height;
+                }
             });
-        sizes
+
+        total_width = total_width.saturating_sub(self.spacing); // Remove the last added spacing
+
+        (sizes, total_width, max_height)
     }
 }
 
-impl<VT: ViewTuple> View for HStack<VT> {
+impl<VT: ViewTuple + 'static> View for HStack<VT> {
     fn size(&self, proposed: Size) -> Size {
-        let sizes = self.layout(proposed);
-        let width: u16 =
-            sizes.iter().map(|s| s.width).sum::<u16>() + (self.spacing * sizes.len().saturating_sub(1) as u16);
-        let height: u16 = sizes.iter().map(|s| s.height).max().unwrap_or(0);
+        let (_, max_width, max_height) = self.layout(proposed);
         Size {
-            width: width.min(proposed.width),
-            height: height.min(proposed.height),
+            width: max_width.min(proposed.width),
+            height: max_height.min(proposed.height),
         }
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         let rect = context.rect;
-        let sizes = self.layout(rect.size);
-        let max_height: u16 = sizes.iter().map(|s| s.height).max().unwrap_or(0);
+        let (sizes, _, max_height) = self.layout(rect.size);
 
         let mut offset_x: u16 = 0;
         self.children.make_iterator().zip(sizes).for_each(|(child, size)| {
@@ -194,7 +198,7 @@ impl<VT: ViewTuple> VStack<VT> {
         self
     }
 
-    fn layout(&self, proposed: Size) -> Vec<Size> {
+    fn layout(&self, proposed: Size) -> (Vec<Size>, u16, u16) {
         let total = self.children.length();
         let mut sizes = vec![Size::zero(); total]; // Initialize with default Size values
 
@@ -211,7 +215,8 @@ impl<VT: ViewTuple> VStack<VT> {
         views_with_flex.sort_by(|a, b| a.2.cmp(&b.2));
 
         let mut remaining_height = proposed.height;
-
+        let mut max_width = 0;
+        let mut total_height = 0;
         views_with_flex
             .iter()
             .enumerate()
@@ -221,28 +226,33 @@ impl<VT: ViewTuple> VStack<VT> {
                 remaining_height = remaining_height
                     .saturating_sub(child_size.height)
                     .saturating_sub(self.spacing);
+
+                total_height += child_size.height + self.spacing;
+                if child_size.width > max_width {
+                    max_width = child_size.width;
+                }
+
                 sizes[*render_index] = child_size;
             });
-        sizes
+
+        total_height = total_height.saturating_sub(self.spacing);
+
+        (sizes, max_width, total_height)
     }
 }
 
-impl<VT: ViewTuple> View for VStack<VT> {
+impl<VT: ViewTuple + 'static> View for VStack<VT> {
     fn size(&self, proposed: Size) -> Size {
-        let sizes = self.layout(proposed);
-        let width: u16 = sizes.iter().map(|s| s.width).max().unwrap_or(0);
-        let height: u16 =
-            sizes.iter().map(|s| s.height).sum::<u16>() + (self.spacing * sizes.len().saturating_sub(1) as u16);
+        let (_, max_width, max_height) = self.layout(proposed);
         Size {
-            width: width.min(proposed.width),
-            height: height.min(proposed.height),
+            width: max_width.min(proposed.width),
+            height: max_height.min(proposed.height),
         }
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         let rect = context.rect;
-        let sizes = self.layout(rect.size);
-        let max_width: u16 = sizes.iter().map(|s| s.width).max().unwrap_or(0);
+        let (sizes, max_width, _) = self.layout(rect.size);
 
         let mut offset_y: u16 = 0;
         self.children.make_iterator().zip(sizes).for_each(|(child, size)| {
@@ -276,31 +286,39 @@ impl<VT: ViewTuple> ZStack<VT> {
     }
 }
 
-impl<VT: ViewTuple> View for ZStack<VT> {
+impl<VT: ViewTuple + 'static> View for ZStack<VT> {
     fn size(&self, proposed: Size) -> Size {
-        let mut width = 0;
-        let mut height = 0;
-        self.children.make_iterator().for_each(|child| {
-            let size = child.size(proposed);
-            width = width.max(size.width);
-            height = height.max(size.height);
-        });
+        let (width, height) = self
+            .children
+            .make_iterator()
+            .fold((0, 0), |(max_width, max_height), child| {
+                let size = child.size(proposed);
+                (max_width.max(size.width), max_height.max(size.height))
+            });
         Size {
             width: width.min(proposed.width),
             height: height.min(proposed.height),
         }
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
+        let mut max_width = 0;
+        let mut max_height = 0;
+
         let sizes = self
             .children
             .make_iterator()
-            .map(|child| (child, child.size(context.rect.size)))
+            .map(|child| {
+                let size = child.size(context.rect.size);
+                if size.width > max_width {
+                    max_width = size.width;
+                }
+                if size.height > max_height {
+                    max_height = size.height;
+                }
+                (child, size)
+            })
             .collect::<Vec<_>>();
-
-        let (max_width, max_height) = sizes
-            .iter()
-            .fold((0, 0), |(mw, mh), s| (mw.max(s.1.width), mh.max(s.1.height)));
 
         for (child, size) in sizes {
             let alignment_offset = match self.alignment {

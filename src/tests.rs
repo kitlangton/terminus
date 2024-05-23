@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 
 pub(crate) fn assert_rendered_view(view: impl View, expected: Vec<&str>, buffer_width: u16, buffer_height: u16) {
     let mut buffer = Buffer::new(buffer_width, buffer_height);
-    let render_context = RenderContext::new(Rect {
+    let render_context = Context::new(Rect {
         point: Point::zero(),
         size: buffer.size.clone(),
     });

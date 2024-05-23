@@ -1,6 +1,6 @@
 use crate::{
     buffer::{Buffer, Modifier, Rect, Size},
-    Color, RenderContext, View,
+    Color, Context, View,
 };
 use crossterm::{
     cursor::MoveTo,
@@ -58,7 +58,7 @@ impl<W: Write> FullScreenRenderer<W> {
         );
 
         let rect = Rect::new(0, 0, view_width, view_height);
-        view.render(RenderContext::new(rect), &mut self.current_buffer);
+        view.render(Context::new(rect), &mut self.current_buffer);
         self.print_buffer().unwrap();
     }
 

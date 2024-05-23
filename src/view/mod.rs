@@ -4,6 +4,7 @@ pub mod padding;
 pub mod stack;
 pub mod text;
 pub mod view_tuple;
+
 use crate::*;
 
 pub use border::{Border, BorderStyle};
@@ -32,10 +33,10 @@ pub use view_tuple::*;
 /// | 2. Powders     |
 /// | 3. Milk        |
 /// +----------------+
-pub trait View: private::Sealed {
+pub trait View: private::Sealed + 'static {
     fn size(&self, proposed: Size) -> Size;
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer);
+    fn render(&self, context: Context, buffer: &mut Buffer);
 }
 
 pub(crate) mod private {
@@ -67,6 +68,10 @@ pub trait ViewExtensions: View + Sized {
 
     fn fill_horizontally(self) -> Frame<Self> {
         self.frame(None, None, Some(u16::MAX), None, Alignment::LEFT)
+    }
+
+    fn fill_vertically(self) -> Frame<Self> {
+        self.frame(None, None, None, Some(u16::MAX), Alignment::TOP)
     }
 
     fn center_vertically(self) -> Frame<Self> {
@@ -124,7 +129,6 @@ pub trait ViewExtensions: View + Sized {
         ContextModifier {
             child: self,
             fg: Some(color),
-            bg: None,
             modifier: None,
         }
     }
@@ -159,15 +163,6 @@ pub trait ViewExtensions: View + Sized {
 
     fn magenta(self) -> ContextModifier<Self> {
         self.color(Color::Magenta)
-    }
-
-    fn background_text(self, color: Color) -> ContextModifier<Self> {
-        ContextModifier {
-            child: self,
-            fg: None,
-            bg: Some(color),
-            modifier: None,
-        }
     }
 
     fn background(self, color: Color) -> Background<Self, FillColor> {
@@ -214,10 +209,7 @@ pub trait ViewExtensions: View + Sized {
     fn as_str(self) -> String {
         let size = self.size(Size::max());
         let mut buffer = Buffer::new(size.width, size.height);
-        self.render(
-            RenderContext::new(Rect::new(0, 0, size.width, size.height)),
-            &mut buffer,
-        );
+        self.render(Context::new(Rect::new(0, 0, size.width, size.height)), &mut buffer);
         buffer.as_str()
     }
 }
@@ -234,7 +226,7 @@ impl<V: View> View for Option<V> {
         }
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         if let Some(view) = self {
             view.render(context, buffer);
         }
@@ -244,19 +236,17 @@ impl<V: View> View for Option<V> {
 mod context_modifier;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RenderContext {
+pub struct Context {
     pub(crate) rect: Rect,
     pub(crate) fg: Color,
-    pub(crate) bg: Color,
     pub(crate) modifier: Modifier,
 }
 
-impl RenderContext {
+impl Context {
     pub(crate) fn new(rect: Rect) -> Self {
         Self {
             rect,
             fg: Color::Reset,
-            bg: Color::Reset,
             modifier: Modifier::empty(),
         }
     }
@@ -271,7 +261,21 @@ impl RenderContext {
         }
     }
 
-    pub fn offset(&self, offset_x: u16, offset_y: u16) -> RenderContext {
+    fn with_fg(self, fg: Option<Color>) -> Self {
+        Self {
+            fg: fg.unwrap_or(self.fg),
+            ..self
+        }
+    }
+
+    fn with_modifier(self, modifier: Option<Modifier>) -> Self {
+        Self {
+            modifier: self.modifier | modifier.unwrap_or(Modifier::empty()),
+            ..self
+        }
+    }
+
+    pub fn offset(&self, offset_x: u16, offset_y: u16) -> Context {
         Self {
             rect: self.rect.offset(offset_x, offset_y),
             ..self.clone()
@@ -279,12 +283,11 @@ impl RenderContext {
     }
 }
 
-impl Default for RenderContext {
+impl Default for Context {
     fn default() -> Self {
         Self {
             rect: Rect::new(0, 0, 0, 0),
             fg: Color::Reset,
-            bg: Color::Reset,
             modifier: Modifier::empty(),
         }
     }
@@ -299,7 +302,7 @@ impl View for EmptyView {
         Size::zero()
     }
 
-    fn render(&self, _context: RenderContext, _buffer: &mut Buffer) {
+    fn render(&self, _context: Context, _buffer: &mut Buffer) {
         // Do nothing
     }
 }

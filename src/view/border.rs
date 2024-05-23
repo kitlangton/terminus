@@ -72,7 +72,7 @@ impl<V> Border<V> {
 
         if let Some(ref title) = self.title {
             title.render(
-                RenderContext {
+                Context {
                     rect: Rect {
                         point: Point { x: left + 1, y: top },
                         size: Size {
@@ -81,7 +81,6 @@ impl<V> Border<V> {
                         },
                     },
                     fg: self.border_color,
-                    bg: Color::Reset,
                     modifier: Modifier::empty(),
                 },
                 buffer,
@@ -162,7 +161,7 @@ impl<V: View> View for Border<V> {
         child_size.outset_by(2, 2, 1, 1).min(proposed)
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, context: Context, buffer: &mut Buffer) {
         // Calculate the size of the border view based on the proposed size from the context
         let size = self.size(context.rect.size);
 
@@ -175,7 +174,7 @@ impl<V: View> View for Border<V> {
 
         // Render the child view within the inner rectangle
         // This ensures the child view is drawn inside the borders
-        self.child.render(RenderContext::new(inner_rect), buffer);
+        self.child.render(Context::new(inner_rect), buffer);
 
         // Draw the borders around the border rectangle
         self.draw_borders(buffer, border_rect.rect);
