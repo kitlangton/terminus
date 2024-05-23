@@ -19,16 +19,8 @@ impl View for Text {
 
     fn render(&self, context: RenderContext, buffer: &mut Buffer) {
         let rect = context.rect;
-        let mut x = rect.left();
-        let y = rect.top();
-        let max_x = rect.right();
-        for c in self.text.chars() {
-            if x >= max_x {
-                break;
-            }
-            buffer.set_char_at(x, y, c, context.fg, context.bg, context.modifier);
-            x += 1;
-        }
+        let text = self.text.chars().take(rect.size.width as usize).collect::<String>();
+        buffer.set_string_at(rect.left(), rect.top(), &text, context.fg, None, context.modifier);
     }
 }
 

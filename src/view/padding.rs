@@ -1,4 +1,4 @@
-use self::buffer::{Buffer, Rect, Size};
+use self::buffer::{Buffer, Size};
 
 use super::*;
 

@@ -16,7 +16,7 @@ impl Buffer {
     pub fn new(width: u16, height: u16) -> Self {
         Self {
             size: Size { width, height },
-            cells: vec![Cell::new(" "); (height * width) as usize],
+            cells: vec![Cell::default(); (height * width) as usize],
         }
     }
 
@@ -25,27 +25,34 @@ impl Buffer {
         &mut self.cells[index as usize]
     }
 
-    pub fn set_char_at(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Color, modifier: Modifier) {
-        let index = self.point_to_index(x, y, self.size.width);
-        if index < self.cells.len() as u16 {
-            self.cells[index as usize] = Cell {
-                symbol: ch.to_string().into(),
-                fg,
-                bg,
-                modifier,
-            };
+    pub fn set_char_at(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Option<Color>, modifier: Modifier) {
+        let cell = self
+            .get_mut(x, y)
+            .set_symbol(ch.to_string().as_ref())
+            .set_fg(fg)
+            .set_modifier(modifier);
+
+        bg.map(|bg| cell.set_bg(bg));
+    }
+
+    pub fn set_string_at(&mut self, x: u16, y: u16, s: &str, fg: Color, bg: Option<Color>, modifier: Modifier) {
+        let width = self.size.width;
+        let mut index = self.point_to_index(x, y, width) as usize;
+
+        for ch in s.chars() {
+            let cell = &mut self.cells[index];
+            cell.set_symbol(&ch.to_string()).set_fg(fg).set_modifier(modifier);
+            if let Some(bg_color) = bg {
+                cell.set_bg(bg_color);
+            }
+            index += 1;
         }
     }
 
     pub fn as_str(&self) -> String {
         self.cells
             .chunks(self.size.width as usize)
-            .map(|row| {
-                row.iter()
-                    .map(|cell| cell.to_ansi_code())
-                    .collect::<Vec<String>>()
-                    .join("")
-            })
+            .map(|row| row.iter().map(|cell| cell.to_ansi_code()).collect::<String>())
             .collect::<Vec<String>>()
             .join("\n")
     }
@@ -61,24 +68,23 @@ impl Buffer {
         })
     }
 
-    fn index_to_point(&self, index: u16, width: u16) -> Point {
-        Point {
-            x: index % width,
-            y: index / width,
-        }
+    #[inline]
+    fn index_to_point(&self, index: u16, width: u16) -> (u16, u16) {
+        (index % width, index / width)
     }
 
+    #[inline]
     fn point_to_index(&self, x: u16, y: u16, width: u16) -> u16 {
         y * width + x
     }
 
     pub fn clear(&mut self) {
-        self.cells = vec![Cell::new(" "); (self.size.height * self.size.width) as usize];
+        self.cells.iter_mut().for_each(|cell| cell.reset());
     }
 
     pub fn clear_line(&mut self, y: u16) {
         for x in 0..self.size.width {
-            self.set_char_at(x, y, '¬', Color::Reset, Color::Reset, Modifier::empty());
+            self.set_char_at(x, y, '¬', Color::Reset, Some(Color::Reset), Modifier::empty());
         }
     }
 
@@ -87,7 +93,7 @@ impl Buffer {
 
         for (i, (current, previous)) in self.cells.iter().zip(&previous.cells).enumerate() {
             if current != previous {
-                let Point { x, y } = self.index_to_point(i as u16, self.size.width);
+                let (x, y) = self.index_to_point(i as u16, self.size.width);
                 updates.push((x, y, current));
             }
         }

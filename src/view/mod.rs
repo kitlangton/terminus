@@ -61,6 +61,26 @@ pub trait ViewExtensions: View + Sized {
         }
     }
 
+    fn center_horizontally(self) -> Frame<Self> {
+        self.frame(None, None, Some(u16::MAX), None, Alignment::CENTER)
+    }
+
+    fn fill_horizontally(self) -> Frame<Self> {
+        self.frame(None, None, Some(u16::MAX), None, Alignment::LEFT)
+    }
+
+    fn center_vertically(self) -> Frame<Self> {
+        self.frame(None, None, None, Some(u16::MAX), Alignment::CENTER)
+    }
+
+    fn min_height(self, min_height: u16) -> Frame<Self> {
+        self.frame(None, Some(min_height), None, None, Alignment::TOP)
+    }
+
+    fn center(self) -> Frame<Self> {
+        self.frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::CENTER)
+    }
+
     fn border(self) -> Border<Self> {
         Border {
             child: self,
@@ -109,12 +129,51 @@ pub trait ViewExtensions: View + Sized {
         }
     }
 
-    fn background(self, color: Color) -> ContextModifier<Self> {
+    fn green(self) -> ContextModifier<Self> {
+        self.color(Color::Green)
+    }
+
+    fn red(self) -> ContextModifier<Self> {
+        self.color(Color::Red)
+    }
+
+    fn blue(self) -> ContextModifier<Self> {
+        self.color(Color::Blue)
+    }
+
+    fn yellow(self) -> ContextModifier<Self> {
+        self.color(Color::Yellow)
+    }
+
+    fn white(self) -> ContextModifier<Self> {
+        self.color(Color::Green)
+    }
+
+    fn black(self) -> ContextModifier<Self> {
+        self.color(Color::Black)
+    }
+
+    fn cyan(self) -> ContextModifier<Self> {
+        self.color(Color::Cyan)
+    }
+
+    fn magenta(self) -> ContextModifier<Self> {
+        self.color(Color::Magenta)
+    }
+
+    fn background_text(self, color: Color) -> ContextModifier<Self> {
         ContextModifier {
             child: self,
             fg: None,
             bg: Some(color),
             modifier: None,
+        }
+    }
+
+    fn background(self, color: Color) -> Background<Self, FillColor> {
+        Background {
+            view: self,
+            background: FillColor { color },
         }
     }
 
@@ -202,10 +261,6 @@ impl RenderContext {
         }
     }
 
-    fn with_rect(&self, rect: Rect) -> Self {
-        Self { rect, ..self.clone() }
-    }
-
     fn with_size(&self, size: Size) -> Self {
         Self {
             rect: Rect {
@@ -235,50 +290,16 @@ impl Default for RenderContext {
     }
 }
 
-pub struct IfThenElse<T: View, F: View> {
-    pub condition: bool,
-    pub trueView: T,
-    pub falseView: F,
-}
-
-impl<T: View, F: View> private::Sealed for IfThenElse<T, F> {}
-
-impl<T: View, F: View> View for IfThenElse<T, F> {
-    fn size(&self, proposed: Size) -> Size {
-        if self.condition {
-            self.trueView.size(proposed)
-        } else {
-            self.falseView.size(proposed)
-        }
-    }
-
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
-        if self.condition {
-            self.trueView.render(context, buffer);
-        } else {
-            self.falseView.render(context, buffer);
-        }
-    }
-}
-
-pub fn if_then_else_view<T: View, F: View>(condition: bool, trueView: T, falseView: F) -> IfThenElse<T, F> {
-    IfThenElse {
-        condition,
-        trueView,
-        falseView,
-    }
-}
-
 pub struct EmptyView;
 
 impl private::Sealed for EmptyView {}
 
 impl View for EmptyView {
-    fn size(&self, proposed: Size) -> Size {
+    fn size(&self, _proposed: Size) -> Size {
         Size::zero()
     }
 
-    fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+    fn render(&self, _context: RenderContext, _buffer: &mut Buffer) {
         // Do nothing
     }
 }

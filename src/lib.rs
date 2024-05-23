@@ -7,11 +7,12 @@ pub use buffer::Color;
 pub use terminal_app::*;
 pub use view::*;
 
-use direction::*;
 use std::sync::Arc;
 
 #[cfg(test)]
 mod tests;
+
+pub use crossterm::event::{KeyCode, KeyEvent};
 
 /// Creates a text view
 ///
@@ -43,11 +44,11 @@ pub fn text(text: &str) -> Text {
 /// ---------------
 /// Hello
 /// There
-pub fn vstack<VT: ViewTuple>(children: VT) -> Stack<VT> {
-    Stack {
+pub fn vstack<VT: ViewTuple>(children: VT) -> VStack<VT> {
+    VStack {
         children,
-        direction: Direction::Vertical,
         spacing: 0,
+        alignment: HorizontalAlignment::Left,
     }
 }
 
@@ -65,12 +66,29 @@ pub fn vstack<VT: ViewTuple>(children: VT) -> Stack<VT> {
 /// Rendered Output
 /// ---------------
 /// Tick Tock
-pub fn hstack<VT: ViewTuple>(children: VT) -> Stack<VT> {
-    Stack {
+pub fn hstack<VT: ViewTuple>(children: VT) -> HStack<VT> {
+    HStack {
         children,
-        direction: Direction::Horizontal,
         spacing: 1,
+        alignment: VerticalAlignment::Center,
     }
+}
+
+/// Creates overlapping views
+pub fn zstack<VT: ViewTuple>(children: VT) -> ZStack<VT> {
+    ZStack {
+        children,
+        alignment: Alignment::TOP_LEFT,
+    }
+}
+
+/// Creates a view given a function that's passed the current size of the view
+pub fn with_size<F, V>(f: F) -> GeometryReader<F>
+where
+    F: Fn(buffer::Size) -> V,
+    V: View,
+{
+    GeometryReader::new(f)
 }
 
 #[derive(Clone)]

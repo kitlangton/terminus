@@ -1,12 +1,13 @@
-# (alT(r)UI(s)t)
+# TERMINUS
 
 A TUI library for Rust. Or, rather, for me to learn Rust by writing a TUI library.
 
 ## Todos
 
-- [ ] Frame view
-- [ ] ZStack view
-- [ ] Alignment for Stack views
+- [x] Frame view
+- [x] GeometryReader
+- [x] Alignment for Stack views
+- [x] ZStack view
 
 ### Attribution
 

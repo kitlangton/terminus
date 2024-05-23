@@ -1,4 +1,3 @@
-use crossterm::event::*;
 use terminus::*;
 use tokio::sync::mpsc;
 
@@ -69,10 +68,10 @@ impl AsyncTerminalApp for SimpleAsyncApp {
             .border_style(BorderStyle::Rounded)
     }
 
-    fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
+    fn update(&mut self, event: Event<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
         match event {
-            TerminalEvent::Key(key_event) => self.handle_key_event(key_event, tx),
-            TerminalEvent::Message(Message::Charge) => {
+            Event::Key(key_event) => self.handle_key_event(key_event, tx),
+            Event::Message(Message::Charge) => {
                 self.super_charge = self.super_charge.map(|x| x.saturating_add(1));
                 true
             }

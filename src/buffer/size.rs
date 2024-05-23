@@ -31,18 +31,22 @@ impl Rect {
         }
     }
 
+    #[inline]
     pub fn left(&self) -> u16 {
         self.point.x
     }
 
+    #[inline]
     pub fn top(&self) -> u16 {
         self.point.y
     }
 
+    #[inline]
     pub fn right(&self) -> u16 {
         self.left() + self.size.width
     }
 
+    #[inline]
     pub fn bottom(&self) -> u16 {
         self.top() + self.size.height
     }
@@ -50,8 +54,8 @@ impl Rect {
     pub fn inset_by(self, inset_left: u16, inset_right: u16, inset_top: u16, inset_bottom: u16) -> Rect {
         Rect {
             point: Point {
-                x: self.point.x + inset_left,
-                y: self.point.y + inset_top,
+                x: self.point.x.saturating_add(inset_left),
+                y: self.point.y.saturating_add(inset_top),
             },
             size: self.size.inset_by(inset_left, inset_right, inset_top, inset_bottom),
         }
@@ -60,8 +64,8 @@ impl Rect {
     pub fn outset_by(self, outset_left: u16, outset_right: u16, outset_top: u16, outset_bottom: u16) -> Rect {
         Rect {
             point: Point {
-                x: self.point.x - outset_left,
-                y: self.point.y - outset_top,
+                x: self.point.x.saturating_sub(outset_left),
+                y: self.point.y.saturating_sub(outset_top),
             },
             size: self
                 .size
@@ -118,8 +122,8 @@ impl Size {
     /// ```
     pub fn inset_by(self, left: u16, right: u16, top: u16, bottom: u16) -> Size {
         Size {
-            width: self.width - left - right,
-            height: self.height - top - bottom,
+            width: self.width.saturating_sub(left + right),
+            height: self.height.saturating_sub(top + bottom),
         }
     }
 

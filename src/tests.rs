@@ -1,5 +1,3 @@
-use crate::buffer::*;
-
 use self::view::View;
 
 use super::*;

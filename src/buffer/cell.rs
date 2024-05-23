@@ -28,6 +28,11 @@ impl Cell {
         self
     }
 
+    pub fn set_modifier(&mut self, modifier: Modifier) -> &mut Self {
+        self.modifier = modifier;
+        self
+    }
+
     pub fn new(symbol: &str) -> Self {
         Self {
             symbol: symbol.into(),
@@ -45,12 +50,19 @@ impl Cell {
             self.symbol,
         )
     }
+
+    pub(crate) fn reset(&mut self) {
+        self.symbol = CompactString::new_inline(" ");
+        self.fg = Color::Reset;
+        self.bg = Color::Reset;
+        self.modifier = Modifier::empty();
+    }
 }
 
 impl Default for Cell {
     fn default() -> Cell {
         Cell {
-            symbol: " ".into(),
+            symbol: CompactString::new_inline(" "),
             fg: Color::Reset,
             bg: Color::Reset,
             modifier: Modifier::empty(),

@@ -1,4 +1,3 @@
-use crossterm::event::*;
 use terminus::*;
 use tokio::sync::mpsc;
 
@@ -145,10 +144,10 @@ impl AsyncTerminalApp for TodoApp {
         .title(" TODOS ")
     }
 
-    fn update(&mut self, event: TerminalEvent<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
+    fn update(&mut self, event: Event<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
         match event {
-            TerminalEvent::Key(key_event) => self.handle_key_event(key_event, tx),
-            TerminalEvent::Message(Message::AddTodo) => {
+            Event::Key(key_event) => self.handle_key_event(key_event, tx),
+            Event::Message(Message::AddTodo) => {
                 if !self.input.is_empty() {
                     self.todos.push(Todo {
                         name: self.input.clone(),

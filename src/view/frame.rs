@@ -1,20 +1,39 @@
 use crate::{private, Size, View};
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HorizontalAlignment {
     Left,
     Center,
     Right,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VerticalAlignment {
     Top,
     Center,
     Bottom,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Alignment {
-    pub(crate) horizontal: HorizontalAlignment,
-    pub(crate) vertical: VerticalAlignment,
+    pub horizontal: HorizontalAlignment,
+    pub vertical: VerticalAlignment,
+}
+
+impl std::fmt::Display for Alignment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Alignment::TOP_LEFT => write!(f, "Top Left"),
+            Alignment::TOP_RIGHT => write!(f, "Top Right"),
+            Alignment::TOP => write!(f, "Top"),
+            Alignment::LEFT => write!(f, "Left"),
+            Alignment::CENTER => write!(f, "Center"),
+            Alignment::RIGHT => write!(f, "Right"),
+            Alignment::BOTTOM_LEFT => write!(f, "Bottom Left"),
+            Alignment::BOTTOM_RIGHT => write!(f, "Bottom Right"),
+            Alignment::BOTTOM => write!(f, "Bottom"),
+        }
+    }
 }
 
 impl Alignment {
@@ -77,12 +96,15 @@ impl<V: View> private::Sealed for Frame<V> {}
 
 impl<V: View> View for Frame<V> {
     fn size(&self, proposed: crate::Size) -> crate::Size {
+        /// if max == u16::max, it should use the proposed size.
+        /// otherwise, it should be the child size bounded by the min and max
+        /// max is not optional.
         fn calculate_dimension(proposed: u16, child: u16, min: Option<u16>, max: Option<u16>) -> u16 {
-            if max == Some(u16::MAX) {
+            let max = max.unwrap_or(proposed);
+            if max == u16::MAX {
                 proposed
             } else {
-                min.map_or(child, |min| std::cmp::max(min, child))
-                    .min(max.unwrap_or(u16::MAX))
+                child.clamp(min.unwrap_or(0), max)
             }
         }
 
@@ -90,7 +112,7 @@ impl<V: View> View for Frame<V> {
         let width = calculate_dimension(proposed.width, child_size.width, self.min_width, self.max_width);
         let height = calculate_dimension(proposed.height, child_size.height, self.min_height, self.max_height);
 
-        Size::new(width, height).min(proposed)
+        Size::new(width, height)
     }
 
     fn render(&self, context: crate::RenderContext, buffer: &mut crate::Buffer) {
@@ -100,8 +122,8 @@ impl<V: View> View for Frame<V> {
         let offset_x = if self.max_width == Some(u16::MAX) {
             match self.alignment.horizontal {
                 HorizontalAlignment::Left => 0,
-                HorizontalAlignment::Center => (size.width / 2) - (child_size.width / 2),
-                HorizontalAlignment::Right => size.width - child_size.width,
+                HorizontalAlignment::Center => (size.width / 2).saturating_sub(child_size.width / 2),
+                HorizontalAlignment::Right => size.width.saturating_sub(child_size.width),
             }
         } else {
             0
@@ -110,8 +132,8 @@ impl<V: View> View for Frame<V> {
         let offset_y = if self.max_height == Some(u16::MAX) {
             match self.alignment.vertical {
                 VerticalAlignment::Top => 0,
-                VerticalAlignment::Center => (size.height / 2) - (child_size.height / 2),
-                VerticalAlignment::Bottom => size.height - child_size.height,
+                VerticalAlignment::Center => (size.height / 2).saturating_sub(child_size.height / 2),
+                VerticalAlignment::Bottom => size.height.saturating_sub(child_size.height),
             }
         } else {
             0
@@ -131,7 +153,7 @@ mod tests {
     #[test]
     fn test_frame_size_with_min_constraints() {
         let frame = text("Hello").frame(Some(10), Some(5), None, None, Alignment::TOP_LEFT);
-        let proposed_size = Size::max();
+        let proposed_size = Size::new(100, 100);
         let size = frame.size(proposed_size);
         assert_eq!(size, Size::new(10, 5));
     }
@@ -139,7 +161,7 @@ mod tests {
     #[test]
     fn test_frame_size_with_max_constraints() {
         let frame = text("Hello, world!").frame(None, None, Some(5), Some(1), Alignment::TOP_LEFT);
-        let proposed_size = Size::max();
+        let proposed_size = Size::new(100, 100);
         let size = frame.size(proposed_size);
 
         assert_eq!(size.width, 5);
@@ -203,7 +225,7 @@ mod tests {
             .border();
         let proposed_size = Size::new(10, 3);
         let size = frame.size(proposed_size);
-        // assert_eq!(size, Size::new(10, 3));
+        assert_eq!(size, Size::new(10, 3));
 
         let expected_output = vec![
             "┌────────┐", // 1

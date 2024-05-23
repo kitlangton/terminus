@@ -44,8 +44,8 @@ impl<V> Border<V> {
     fn draw_borders(&self, buffer: &mut Buffer, rect: Rect) {
         let left = rect.left();
         let top = rect.top();
-        let right = rect.right() - 1;
-        let bottom_y = rect.bottom() - 1;
+        let right = rect.right().saturating_sub(1);
+        let bottom_y = rect.bottom().saturating_sub(1);
 
         let components = self.border_style.components();
 
@@ -76,7 +76,7 @@ impl<V> Border<V> {
                     rect: Rect {
                         point: Point { x: left + 1, y: top },
                         size: Size {
-                            width: rect.size.width - 2,
+                            width: rect.size.width.saturating_sub(2),
                             height: 1,
                         },
                     },
@@ -145,13 +145,13 @@ const ROUNDED_BORDER_COMPONENTS: BorderComponents = BorderComponents {
 
 fn draw_horizontal_line(buffer: &mut Buffer, y: u16, start_x: u16, end_x: u16, char: char, color: Color) {
     for x in start_x..end_x {
-        buffer.set_char_at(x, y, char, color, Color::Reset, Modifier::empty());
+        buffer.set_char_at(x, y, char, color, None, Modifier::empty());
     }
 }
 
 fn draw_vertical_line(buffer: &mut Buffer, x: u16, start_y: u16, end_y: u16, char: char, color: Color) {
     for y in start_y..end_y {
-        buffer.set_char_at(x, y, char, color, Color::Reset, Modifier::empty());
+        buffer.set_char_at(x, y, char, color, None, Modifier::empty());
     }
 }
 
@@ -163,18 +163,22 @@ impl<V: View> View for Border<V> {
     }
 
     fn render(&self, context: RenderContext, buffer: &mut Buffer) {
+        // Calculate the size of the border view based on the proposed size from the context
         let size = self.size(context.rect.size);
-        let border_rect = Rect {
-            point: context.rect.point,
-            size,
-        };
 
-        let inner_rect = border_rect.inset_by(2, 2, 1, 1);
+        // Define the rectangle for the border using the calculated size and the starting point from the context
+        let border_rect = context.with_size(size);
+
+        // Calculate the inner rectangle by insetting the border rectangle
+        // The insets are 2 units from the left and right, and 1 unit from the top and bottom
+        let inner_rect = border_rect.rect.inset_by(2, 2, 1, 1);
 
         // Render the child view within the inner rectangle
+        // This ensures the child view is drawn inside the borders
         self.child.render(RenderContext::new(inner_rect), buffer);
 
-        self.draw_borders(buffer, border_rect);
+        // Draw the borders around the border rectangle
+        self.draw_borders(buffer, border_rect.rect);
     }
 }
 

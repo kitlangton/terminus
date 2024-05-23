@@ -19,21 +19,6 @@ impl<V: View> ContextModifier<V> {
             modifier: Some(modifier),
         }
     }
-
-    // pub fn color(&mut self, color: Color) -> &mut Self {
-    //     self.fg = Some(color);
-    //     self
-    // }
-
-    // pub fn background(&mut self, color: Color) -> &mut Self {
-    //     self.bg = Some(color);
-    //     self
-    // }
-
-    // pub fn bold(&mut self) -> &mut Self {
-    //     self.modifier = self.modifier.map(|m| m | Modifier::BOLD);
-    //     self
-    // }
 }
 
 impl<V: View> View for ContextModifier<V> {
