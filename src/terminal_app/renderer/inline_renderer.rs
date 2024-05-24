@@ -2,7 +2,7 @@ use std::io::{self, Write};
 
 use crate::{
     buffer::{Buffer, Modifier, Rect, Size},
-    Color,
+    Color, ViewId,
 };
 use crossterm::{
     cursor::{MoveTo, MoveUp},
@@ -71,11 +71,22 @@ impl<W: Write> InlineRenderer<W> {
             "View height or width is greater than terminal height or width"
         );
 
-        self.claim_space(view_height.max(self.claimed_height), self.terminal_size.height);
+        self.claim_space(
+            view_height.max(self.claimed_height),
+            self.terminal_size.height,
+        );
 
-        let start_y = self.terminal_size.height.saturating_sub(self.claimed_height).max(0);
+        let start_y = self
+            .terminal_size
+            .height
+            .saturating_sub(self.claimed_height)
+            .max(0);
         let rect = Rect::new(0, start_y, view_width, view_height);
-        view.render(Context::new(rect), &mut self.current_buffer);
+        view.render(
+            &mut ViewId::empty(),
+            Context::new(rect),
+            &mut self.current_buffer,
+        );
         self.view_height = view_height;
         self.print_buffer().unwrap();
     }
@@ -83,7 +94,11 @@ impl<W: Write> InlineRenderer<W> {
     /// Moves the cursor to the bottom of the current view.
     /// This is intended to be called before exiting the program.
     pub(crate) fn move_cursor_to_bottom_of_current_view(&mut self) {
-        let target = self.terminal_size.height.saturating_sub(self.claimed_height) + self.view_height;
+        let target = self
+            .terminal_size
+            .height
+            .saturating_sub(self.claimed_height)
+            + self.view_height;
         queue!(self.writer, MoveTo(0, target), Print("\n")).unwrap();
     }
 

@@ -3,13 +3,18 @@ use self::view::View;
 use super::*;
 use pretty_assertions::assert_eq;
 
-pub(crate) fn assert_rendered_view(view: impl View, expected: Vec<&str>, buffer_width: u16, buffer_height: u16) {
+pub(crate) fn assert_rendered_view(
+    view: impl View,
+    expected: Vec<&str>,
+    buffer_width: u16,
+    buffer_height: u16,
+) {
     let mut buffer = Buffer::new(buffer_width, buffer_height);
     let render_context = Context::new(Rect {
         point: Point::zero(),
         size: buffer.size.clone(),
     });
-    view.render(render_context, &mut buffer);
+    view.render(&mut ViewId::empty(), render_context, &mut buffer);
     let result: String = buffer.as_str();
     assert_eq!(result, expected.join("\n"));
 }
@@ -61,7 +66,11 @@ fn test_vstack_with_padded_text() {
 
 #[test]
 fn test_alternating_hstack_vstack() {
-    let alternating_stack = vstack((text("B"), hstack((text("C"), text("D"), text("E"))), text("F")));
+    let alternating_stack = vstack((
+        text("B"),
+        hstack((text("C"), text("D"), text("E"))),
+        text("F"),
+    ));
     let expected = vec![
         "B    ", //
         "C D E", //

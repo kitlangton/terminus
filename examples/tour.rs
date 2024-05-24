@@ -33,6 +33,11 @@ impl Tab {
         let index = Self::ALL.iter().position(|x| x == self).unwrap();
         Self::ALL[(index + 1) % Self::ALL.len()]
     }
+
+    fn prev(&self) -> Self {
+        let index = Self::ALL.iter().position(|x| x == self).unwrap();
+        Self::ALL[(index + Self::ALL.len() - 1) % Self::ALL.len()]
+    }
 }
 
 struct FrameTab {
@@ -110,6 +115,8 @@ impl AsyncTerminalApp for TourApp {
 
                 if key_event.code == KeyCode::Tab {
                     self.tab = self.tab.next();
+                } else if key_event.code == KeyCode::BackTab {
+                    self.tab = self.tab.prev();
                 }
 
                 match self.tab {
@@ -143,8 +150,17 @@ fn tab_bar_view(tab: Tab) -> impl View {
         .iter()
         .map(|t| {
             let is_active = *t == tab;
-            let color = if is_active { Color::Green } else { Color::Reset };
-            vstack(t.to_string().to_uppercase().underline_when(is_active).color(color))
+            let color = if is_active {
+                Color::Green
+            } else {
+                Color::Reset
+            };
+            vstack(
+                t.to_string()
+                    .to_uppercase()
+                    .underline_when(is_active)
+                    .color(color),
+            )
         })
         .collect::<Vec<_>>();
 
@@ -162,12 +178,21 @@ fn handle_key_frame_tab(tab: &mut FrameTab, event: KeyEvent) {
 }
 
 fn frame_tab_view(frame_tab: &FrameTab) -> impl View {
-    vstack(("FRAME", format!("Alignment: {}", frame_tab.alignment).green()))
-        .alignment(frame_tab.alignment.horizontal)
-        .frame(None, None, Some(u16::MAX), Some(u16::MAX), frame_tab.alignment)
-        .border()
-        .border_style(BorderStyle::Rounded)
-        .title(" FRAME ")
+    vstack((
+        "FRAME",
+        format!("Alignment: {}", frame_tab.alignment).green(),
+    ))
+    .alignment(frame_tab.alignment.horizontal)
+    .frame(
+        None,
+        None,
+        Some(u16::MAX),
+        Some(u16::MAX),
+        frame_tab.alignment,
+    )
+    .border()
+    .border_style(BorderStyle::Rounded)
+    .title(" FRAME ")
 }
 
 /// LIST TAB
@@ -179,8 +204,18 @@ pub struct ListTab {
 
 pub fn handle_key_list_tab(tab: &mut ListTab, event: KeyEvent) {
     match event.code {
-        KeyCode::Down => tab.selected_index = tab.selected_index.saturating_add(1).clamp(0, tab.items.len() - 1),
-        KeyCode::Up => tab.selected_index = tab.selected_index.saturating_sub(1).clamp(0, tab.items.len() - 1),
+        KeyCode::Down => {
+            tab.selected_index = tab
+                .selected_index
+                .saturating_add(1)
+                .clamp(0, tab.items.len() - 1)
+        }
+        KeyCode::Up => {
+            tab.selected_index = tab
+                .selected_index
+                .saturating_sub(1)
+                .clamp(0, tab.items.len() - 1)
+        }
         _ => (),
     }
 }
@@ -192,9 +227,17 @@ pub fn list_tab_view(list_tab: &ListTab) -> impl View {
         .enumerate()
         .map(|(i, x)| {
             let is_active = i == list_tab.selected_index;
-            let color = if is_active { Color::Green } else { Color::Reset };
+            let color = if is_active {
+                Color::Green
+            } else {
+                Color::Reset
+            };
             let message = if is_active { ">" } else { " " };
-            hstack((message.color(color), format!("ITEM {}", i).color(color), text(x)))
+            hstack((
+                message.color(color),
+                format!("ITEM {}", i).color(color),
+                text(x),
+            ))
         })
         .collect::<Vec<_>>();
 
@@ -223,7 +266,10 @@ pub fn list_tab_view(list_tab: &ListTab) -> impl View {
 // TODO: Improve this and pull it into the library.
 pub fn scroll_view<V: View + Clone>(views: Vec<V>, selected_index: usize) -> impl View {
     with_size(move |available_size| {
-        let sizes = views.iter().map(|view| view.size(available_size)).collect::<Vec<_>>();
+        let sizes = views
+            .iter()
+            .map(|view| view.size(available_size))
+            .collect::<Vec<_>>();
 
         let mut start_offset = 0;
         let mut end_offset = 0;
@@ -258,17 +304,7 @@ fn handle_key_zstack_tab(tab: &mut ZStackTab, event: KeyEvent) {
 }
 
 fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
-    let alignment_string = match tab.alignment {
-        Alignment::CENTER => "CENTER",
-        Alignment::TOP => "TOP",
-        Alignment::BOTTOM => "BOTTOM",
-        Alignment::LEFT => "LEFT",
-        Alignment::RIGHT => "RIGHT",
-        Alignment::TOP_LEFT => "TOP LEFT",
-        Alignment::TOP_RIGHT => "TOP RIGHT",
-        Alignment::BOTTOM_LEFT => "BOTTOM LEFT",
-        Alignment::BOTTOM_RIGHT => "BOTTOM RIGHT",
-    };
+    let alignment_string = tab.alignment.to_string().to_uppercase();
 
     let color_for_alignment = match tab.alignment.vertical {
         VerticalAlignment::Top => Color::Green,

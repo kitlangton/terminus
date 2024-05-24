@@ -19,7 +19,7 @@ impl View for Text {
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, _id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let rect = context.rect;
         buffer.set_string_at(
             rect.left(),
@@ -40,8 +40,8 @@ impl View for &'static str {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
-        render_text(self, context, buffer);
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+        render_text(self, id, context, buffer);
     }
 }
 
@@ -52,8 +52,8 @@ impl View for String {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
-        render_text(self, context, buffer);
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+        render_text(self, id, context, buffer);
     }
 }
 
@@ -66,7 +66,7 @@ fn size_for_text(text: &str, proposed: Size) -> Size {
 }
 
 #[inline]
-fn render_text(text: &str, context: Context, buffer: &mut Buffer) {
+fn render_text(text: &str, _id: &mut ViewId, context: Context, buffer: &mut Buffer) {
     let rect = context.rect;
     let width = size_for_text(text, rect.size).width;
     buffer.set_string_at(
@@ -99,7 +99,7 @@ mod tests {
         let mut buffer = Buffer::new(10, 1);
         let rect = Rect::new(0, 0, 10, 1);
         let context = Context::new(rect);
-        text.render(context, &mut buffer);
+        text.render(&mut ViewId::empty(), context, &mut buffer);
 
         let expected_output = "Hello     ";
         let result: String = buffer.as_str();
@@ -115,7 +115,7 @@ mod tests {
         let mut buffer = Buffer::new(5, 1);
         let rect = Rect::new(0, 0, 5, 1);
         let context = Context::new(rect);
-        text.render(context, &mut buffer);
+        text.render(&mut ViewId::empty(), context, &mut buffer);
 
         let expected_output = "Hello";
         let result: String = buffer.as_str();
@@ -123,7 +123,7 @@ mod tests {
     }
 
     /// Test the size of this char: █
-    /// Technically it's 3 chars wide, but it should be sized and rendered as 1 column wide.
+    /// Technically, it's 3 "chars wide, but it should be sized and rendered as 1 column.
     #[test]
     fn test_char_size() {
         let char = text("█");

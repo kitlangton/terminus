@@ -38,7 +38,10 @@ impl<V> Border<V> {
     }
 
     fn draw_corner(buffer: &mut Buffer, x: u16, y: u16, symbol: char, color: Color) {
-        buffer.get_mut(x, y).set_symbol(&symbol.to_string()).set_fg(color);
+        buffer
+            .get_mut(x, y)
+            .set_symbol(&symbol.to_string())
+            .set_fg(color);
     }
 
     fn draw_borders(&self, buffer: &mut Buffer, rect: Rect) {
@@ -52,11 +55,30 @@ impl<V> Border<V> {
         // Draw corners
         Self::draw_corner(buffer, left, top, components.top_left, self.border_color);
         Self::draw_corner(buffer, right, top, components.top_right, self.border_color);
-        Self::draw_corner(buffer, left, bottom_y, components.bottom_left, self.border_color);
-        Self::draw_corner(buffer, right, bottom_y, components.bottom_right, self.border_color);
+        Self::draw_corner(
+            buffer,
+            left,
+            bottom_y,
+            components.bottom_left,
+            self.border_color,
+        );
+        Self::draw_corner(
+            buffer,
+            right,
+            bottom_y,
+            components.bottom_right,
+            self.border_color,
+        );
 
         // Draw horizontal lines
-        draw_horizontal_line(buffer, top, left + 1, right, components.horizontal, self.border_color);
+        draw_horizontal_line(
+            buffer,
+            top,
+            left + 1,
+            right,
+            components.horizontal,
+            self.border_color,
+        );
         draw_horizontal_line(
             buffer,
             bottom_y,
@@ -67,14 +89,32 @@ impl<V> Border<V> {
         );
 
         // Draw vertical lines
-        draw_vertical_line(buffer, left, top + 1, bottom_y, components.vertical, self.border_color);
-        draw_vertical_line(buffer, right, top + 1, bottom_y, components.vertical, self.border_color);
+        draw_vertical_line(
+            buffer,
+            left,
+            top + 1,
+            bottom_y,
+            components.vertical,
+            self.border_color,
+        );
+        draw_vertical_line(
+            buffer,
+            right,
+            top + 1,
+            bottom_y,
+            components.vertical,
+            self.border_color,
+        );
 
         if let Some(ref title) = self.title {
             title.render(
+                &mut ViewId::empty(),
                 Context {
                     rect: Rect {
-                        point: Point { x: left + 1, y: top },
+                        point: Point {
+                            x: left + 1,
+                            y: top,
+                        },
                         size: Size {
                             width: rect.size.width.saturating_sub(2),
                             height: 1,
@@ -82,6 +122,7 @@ impl<V> Border<V> {
                     },
                     fg: self.border_color,
                     modifier: Modifier::empty(),
+                    app_state: AppState::new(),
                 },
                 buffer,
             );
@@ -142,13 +183,27 @@ const ROUNDED_BORDER_COMPONENTS: BorderComponents = BorderComponents {
     vertical: '│',
 };
 
-fn draw_horizontal_line(buffer: &mut Buffer, y: u16, start_x: u16, end_x: u16, char: char, color: Color) {
+fn draw_horizontal_line(
+    buffer: &mut Buffer,
+    y: u16,
+    start_x: u16,
+    end_x: u16,
+    char: char,
+    color: Color,
+) {
     for x in start_x..end_x {
         buffer.set_char_at(x, y, char, color, None, Modifier::empty());
     }
 }
 
-fn draw_vertical_line(buffer: &mut Buffer, x: u16, start_y: u16, end_y: u16, char: char, color: Color) {
+fn draw_vertical_line(
+    buffer: &mut Buffer,
+    x: u16,
+    start_y: u16,
+    end_y: u16,
+    char: char,
+    color: Color,
+) {
     for y in start_y..end_y {
         buffer.set_char_at(x, y, char, color, None, Modifier::empty());
     }
@@ -161,23 +216,23 @@ impl<V: View> View for Border<V> {
         child_size.outset_by(2, 2, 1, 1).min(proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         // Calculate the size of the border view based on the proposed size from the context
         let size = self.size(context.rect.size);
 
         // Define the rectangle for the border using the calculated size and the starting point from the context
-        let border_rect = context.with_size(size);
+        let border_context = context.with_size(size);
 
         // Calculate the inner rectangle by insetting the border rectangle
         // The insets are 2 units from the left and right, and 1 unit from the top and bottom
-        let inner_rect = border_rect.rect.inset_by(2, 2, 1, 1);
+        let inner_context = border_context.clone().inset_by(2, 2, 1, 1);
 
         // Render the child view within the inner rectangle
         // This ensures the child view is drawn inside the borders
-        self.child.render(Context::new(inner_rect), buffer);
+        self.child.render(id, inner_context, buffer);
 
         // Draw the borders around the border rectangle
-        self.draw_borders(buffer, border_rect.rect);
+        self.draw_borders(buffer, border_context.rect);
     }
 }
 
@@ -194,7 +249,10 @@ mod tests {
     fn test_border_size() {
         let view = hstack((text("Test"), text("View")));
         let border = view.border();
-        let expected_size = Size { width: 13, height: 3 };
+        let expected_size = Size {
+            width: 13,
+            height: 3,
+        };
         assert_eq!(border.size(Size::max()), expected_size);
     }
 
@@ -220,7 +278,13 @@ mod tests {
             "│ └────────┘ │", //
             "└────────────┘", //
         ];
-        assert_eq!(outer_view.size(Size::max()), Size { width: 14, height: 5 });
+        assert_eq!(
+            outer_view.size(Size::max()),
+            Size {
+                width: 14,
+                height: 5
+            }
+        );
         assert_rendered_view(outer_view, expected_output, 14, 5);
     }
 
@@ -235,7 +299,13 @@ mod tests {
             "║ ╚════════╝ ║", //
             "╚════════════╝", //
         ];
-        assert_eq!(outer_view.size(Size::max()), Size { width: 14, height: 5 });
+        assert_eq!(
+            outer_view.size(Size::max()),
+            Size {
+                width: 14,
+                height: 5
+            }
+        );
         assert_rendered_view(outer_view, expected_output, 14, 5);
     }
 
@@ -247,7 +317,13 @@ mod tests {
             "│ Titled View │", //
             "└─────────────┘", //
         ];
-        assert_eq!(view.size(Size::max()), Size { width: 15, height: 3 });
+        assert_eq!(
+            view.size(Size::max()),
+            Size {
+                width: 15,
+                height: 3
+            }
+        );
         assert_rendered_view(view, expected_output, 15, 3);
     }
 }

@@ -1,4 +1,4 @@
-use crate::{private, Size, View};
+use crate::{private, Size, View, ViewId};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HorizontalAlignment {
@@ -7,11 +7,23 @@ pub enum HorizontalAlignment {
     Right,
 }
 
+impl HorizontalAlignment {
+    pub const CENTER: Self = Self::Center;
+    pub const LEFT: Self = Self::Left;
+    pub const RIGHT: Self = Self::Right;
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VerticalAlignment {
     Top,
     Center,
     Bottom,
+}
+
+impl VerticalAlignment {
+    pub const CENTER: Self = Self::Center;
+    pub const TOP: Self = Self::Top;
+    pub const BOTTOM: Self = Self::Bottom;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -38,48 +50,48 @@ impl std::fmt::Display for Alignment {
 
 impl Alignment {
     pub const TOP_LEFT: Self = Self {
-        horizontal: HorizontalAlignment::Left,
-        vertical: VerticalAlignment::Top,
+        horizontal: HorizontalAlignment::LEFT,
+        vertical: VerticalAlignment::TOP,
     };
 
     pub const TOP: Self = Self {
-        horizontal: HorizontalAlignment::Center,
-        vertical: VerticalAlignment::Top,
+        horizontal: HorizontalAlignment::CENTER,
+        vertical: VerticalAlignment::TOP,
     };
 
     pub const TOP_RIGHT: Self = Self {
-        horizontal: HorizontalAlignment::Right,
-        vertical: VerticalAlignment::Top,
+        horizontal: HorizontalAlignment::RIGHT,
+        vertical: VerticalAlignment::TOP,
     };
 
     pub const LEFT: Self = Self {
-        horizontal: HorizontalAlignment::Left,
-        vertical: VerticalAlignment::Center,
+        horizontal: HorizontalAlignment::LEFT,
+        vertical: VerticalAlignment::CENTER,
     };
 
     pub const CENTER: Self = Self {
-        horizontal: HorizontalAlignment::Center,
-        vertical: VerticalAlignment::Center,
+        horizontal: HorizontalAlignment::CENTER,
+        vertical: VerticalAlignment::CENTER,
     };
 
     pub const RIGHT: Self = Self {
-        horizontal: HorizontalAlignment::Right,
-        vertical: VerticalAlignment::Center,
+        horizontal: HorizontalAlignment::RIGHT,
+        vertical: VerticalAlignment::CENTER,
     };
 
     pub const BOTTOM_LEFT: Self = Self {
-        horizontal: HorizontalAlignment::Left,
-        vertical: VerticalAlignment::Bottom,
+        horizontal: HorizontalAlignment::LEFT,
+        vertical: VerticalAlignment::BOTTOM,
     };
 
     pub const BOTTOM: Self = Self {
-        horizontal: HorizontalAlignment::Center,
-        vertical: VerticalAlignment::Bottom,
+        horizontal: HorizontalAlignment::CENTER,
+        vertical: VerticalAlignment::BOTTOM,
     };
 
     pub const BOTTOM_RIGHT: Self = Self {
-        horizontal: HorizontalAlignment::Right,
-        vertical: VerticalAlignment::Bottom,
+        horizontal: HorizontalAlignment::RIGHT,
+        vertical: VerticalAlignment::BOTTOM,
     };
 }
 
@@ -99,7 +111,12 @@ impl<V: View> View for Frame<V> {
         /// if max == u16::max, it should use the proposed size.
         /// otherwise, it should be the child size bounded by the min and max
         /// max is not optional.
-        fn calculate_dimension(proposed: u16, child: u16, min: Option<u16>, max: Option<u16>) -> u16 {
+        fn calculate_dimension(
+            proposed: u16,
+            child: u16,
+            min: Option<u16>,
+            max: Option<u16>,
+        ) -> u16 {
             let max = max.unwrap_or(proposed);
             if max == u16::MAX {
                 proposed
@@ -109,20 +126,32 @@ impl<V: View> View for Frame<V> {
         }
 
         let child_size = self.child.size(proposed);
-        let width = calculate_dimension(proposed.width, child_size.width, self.min_width, self.max_width);
-        let height = calculate_dimension(proposed.height, child_size.height, self.min_height, self.max_height);
+        let width = calculate_dimension(
+            proposed.width,
+            child_size.width,
+            self.min_width,
+            self.max_width,
+        );
+        let height = calculate_dimension(
+            proposed.height,
+            child_size.height,
+            self.min_height,
+            self.max_height,
+        );
 
         Size::new(width, height)
     }
 
-    fn render(&self, context: crate::Context, buffer: &mut crate::Buffer) {
+    fn render(&self, id: &mut ViewId, context: crate::Context, buffer: &mut crate::Buffer) {
         let child_size = self.child.size(context.rect.size);
         let size = self.size(context.rect.size);
 
         let offset_x = if self.max_width == Some(u16::MAX) {
             match self.alignment.horizontal {
                 HorizontalAlignment::Left => 0,
-                HorizontalAlignment::Center => (size.width / 2).saturating_sub(child_size.width / 2),
+                HorizontalAlignment::Center => {
+                    (size.width / 2).saturating_sub(child_size.width / 2)
+                }
                 HorizontalAlignment::Right => size.width.saturating_sub(child_size.width),
             }
         } else {
@@ -132,15 +161,20 @@ impl<V: View> View for Frame<V> {
         let offset_y = if self.max_height == Some(u16::MAX) {
             match self.alignment.vertical {
                 VerticalAlignment::Top => 0,
-                VerticalAlignment::Center => (size.height / 2).saturating_sub(child_size.height / 2),
+                VerticalAlignment::Center => {
+                    (size.height / 2).saturating_sub(child_size.height / 2)
+                }
                 VerticalAlignment::Bottom => size.height.saturating_sub(child_size.height),
             }
         } else {
             0
         };
 
-        self.child
-            .render(context.with_size(size).offset(offset_x, offset_y), buffer);
+        self.child.render(
+            id,
+            context.with_size(size).offset(offset_x, offset_y),
+            buffer,
+        );
     }
 }
 
@@ -239,7 +273,13 @@ mod tests {
     fn test_frame_vertical_and_horizontal_alignment() {
         // Test for vertical and horizontal center alignment
         let frame = text("WOW")
-            .frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::CENTER)
+            .frame(
+                None,
+                None,
+                Some(u16::MAX),
+                Some(u16::MAX),
+                Alignment::CENTER,
+            )
             .border();
         let proposed_size = Size::new(9, 5);
         let size = frame.size(proposed_size);
@@ -259,7 +299,13 @@ mod tests {
     fn test_frame_vertical_and_horizontal_alignment_bottom_right() {
         // Test for vertical and horizontal center alignment
         let view = text("WOW")
-            .frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::BOTTOM_RIGHT)
+            .frame(
+                None,
+                None,
+                Some(u16::MAX),
+                Some(u16::MAX),
+                Alignment::BOTTOM_RIGHT,
+            )
             .border();
         let proposed_size = Size::new(9, 5);
         let size = view.size(proposed_size);

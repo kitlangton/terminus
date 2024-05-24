@@ -1,6 +1,6 @@
 use crate::{
     buffer::{Buffer, Modifier, Rect, Size},
-    Color, Context, View,
+    AppState, Color, Context, View, ViewId,
 };
 use crossterm::{
     cursor::MoveTo,
@@ -17,6 +17,7 @@ pub(crate) struct FullScreenRenderer<W: Write> {
     current_buffer: Buffer,
     prev_buffer: Buffer,
     terminal_size: Size,
+    app_state: AppState,
 }
 
 impl<W: Write> Renderer for FullScreenRenderer<W> {
@@ -41,6 +42,7 @@ impl<W: Write> FullScreenRenderer<W> {
             current_buffer: Buffer::new(terminal_width, terminal_height),
             prev_buffer: Buffer::new(terminal_width, terminal_height),
             terminal_size,
+            app_state: AppState::new(),
         }
     }
 
@@ -58,7 +60,11 @@ impl<W: Write> FullScreenRenderer<W> {
         );
 
         let rect = Rect::new(0, 0, view_width, view_height);
-        view.render(Context::new(rect), &mut self.current_buffer);
+        view.render(
+            &mut ViewId::empty(),
+            Context::new(rect).with_app_state(self.app_state.clone()),
+            &mut self.current_buffer,
+        );
         self.print_buffer().unwrap();
     }
 

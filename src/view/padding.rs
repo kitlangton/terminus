@@ -28,13 +28,13 @@ impl<V: View> View for Padding<V> {
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let inner_rect = context.rect.inset_by(
             self.padding_left,
             self.padding_right,
             self.padding_top,
             self.padding_bottom,
         );
-        self.child.render(Context::new(inner_rect), buffer);
+        self.child.render(id, Context::new(inner_rect), buffer);
     }
 }

@@ -25,10 +25,10 @@ where
         f(proposed).size(proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let f = &self.view;
         let view = f(context.rect.size);
-        view.render(context, buffer);
+        view.render(id, context, buffer);
     }
 }
 
@@ -45,10 +45,11 @@ impl<V: View, BG: View> View for Background<V, BG> {
         self.view.size(proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let size = self.view.size(context.rect.size);
-        self.background.render(context.with_size(size), buffer);
-        self.view.render(context, buffer);
+        self.background
+            .render(id, context.clone().with_size(size), buffer);
+        self.view.render(id, context, buffer);
     }
 }
 
@@ -63,7 +64,7 @@ impl View for FillColor {
         proposed
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, _id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let point = context.rect.point;
         let size = context.rect.size;
         for y in point.y..point.y + size.height {
@@ -153,20 +154,30 @@ impl<VT: ViewTuple + 'static> View for HStack<VT> {
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let rect = context.rect;
         let (sizes, _, max_height) = self.layout(rect.size);
 
         let mut offset_x: u16 = 0;
-        self.children.make_iterator().zip(sizes).for_each(|(child, size)| {
-            let offset_y = match self.alignment {
-                VerticalAlignment::Top => 0,
-                VerticalAlignment::Center => (max_height.saturating_sub(size.height)) / 2,
-                VerticalAlignment::Bottom => max_height.saturating_sub(size.height),
-            };
-            child.render(context.offset(offset_x, offset_y).with_size(size), buffer);
-            offset_x += size.width + self.spacing;
-        });
+        self.children
+            .make_iterator()
+            .zip(sizes)
+            .enumerate()
+            .for_each(|(i, (child, size))| {
+                let offset_y = match self.alignment {
+                    VerticalAlignment::Top => 0,
+                    VerticalAlignment::Center => (max_height.saturating_sub(size.height)) / 2,
+                    VerticalAlignment::Bottom => max_height.saturating_sub(size.height),
+                };
+                id.push(i as u64);
+                child.render(
+                    id,
+                    context.clone().offset(offset_x, offset_y).with_size(size),
+                    buffer,
+                );
+                id.pop();
+                offset_x += size.width + self.spacing;
+            });
     }
 }
 
@@ -250,20 +261,30 @@ impl<VT: ViewTuple + 'static> View for VStack<VT> {
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let rect = context.rect;
         let (sizes, max_width, _) = self.layout(rect.size);
 
         let mut offset_y: u16 = 0;
-        self.children.make_iterator().zip(sizes).for_each(|(child, size)| {
-            let offset_x = match self.alignment {
-                HorizontalAlignment::Left => 0,
-                HorizontalAlignment::Center => (max_width.saturating_sub(size.width)) / 2,
-                HorizontalAlignment::Right => max_width.saturating_sub(size.width),
-            };
-            child.render(context.offset(offset_x, offset_y).with_size(size), buffer);
-            offset_y += size.height + self.spacing;
-        });
+        self.children
+            .make_iterator()
+            .zip(sizes)
+            .enumerate()
+            .for_each(|(i, (child, size))| {
+                let offset_x = match self.alignment {
+                    HorizontalAlignment::Left => 0,
+                    HorizontalAlignment::Center => (max_width.saturating_sub(size.width)) / 2,
+                    HorizontalAlignment::Right => max_width.saturating_sub(size.width),
+                };
+                id.push(i as u64);
+                child.render(
+                    id,
+                    context.clone().offset(offset_x, offset_y).with_size(size),
+                    buffer,
+                );
+                id.pop();
+                offset_y += size.height + self.spacing;
+            });
     }
 }
 
@@ -277,7 +298,10 @@ impl<VT> private::Sealed for ZStack<VT> {}
 
 impl<VT: ViewTuple> ZStack<VT> {
     pub fn new(children: VT, alignment: Alignment) -> Self {
-        Self { children, alignment }
+        Self {
+            children,
+            alignment,
+        }
     }
 
     pub fn alignment(mut self, alignment: Alignment) -> Self {
@@ -288,27 +312,28 @@ impl<VT: ViewTuple> ZStack<VT> {
 
 impl<VT: ViewTuple + 'static> View for ZStack<VT> {
     fn size(&self, proposed: Size) -> Size {
-        let (width, height) = self
-            .children
-            .make_iterator()
-            .fold((0, 0), |(max_width, max_height), child| {
-                let size = child.size(proposed);
-                (max_width.max(size.width), max_height.max(size.height))
-            });
+        let (width, height) =
+            self.children
+                .make_iterator()
+                .fold((0, 0), |(max_width, max_height), child| {
+                    let size = child.size(proposed);
+                    (max_width.max(size.width), max_height.max(size.height))
+                });
         Size {
             width: width.min(proposed.width),
             height: height.min(proposed.height),
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let mut max_width = 0;
         let mut max_height = 0;
 
         let sizes = self
             .children
             .make_iterator()
-            .map(|child| {
+            .enumerate()
+            .map(|(index, child)| {
                 let size = child.size(context.rect.size);
                 if size.width > max_width {
                     max_width = size.width;
@@ -316,24 +341,36 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
                 if size.height > max_height {
                     max_height = size.height;
                 }
-                (child, size)
+                (index, child, size)
             })
             .collect::<Vec<_>>();
 
-        for (child, size) in sizes {
+        for (index, child, size) in sizes {
             let alignment_offset = match self.alignment {
                 Alignment::TOP_LEFT => (0, 0),
                 Alignment::TOP => (max_width / 2 - size.width / 2, 0),
                 Alignment::TOP_RIGHT => (max_width - size.width, 0),
                 Alignment::LEFT => (0, max_height / 2 - size.height / 2),
-                Alignment::CENTER => (max_width / 2 - size.width / 2, max_height / 2 - size.height / 2),
+                Alignment::CENTER => (
+                    max_width / 2 - size.width / 2,
+                    max_height / 2 - size.height / 2,
+                ),
                 Alignment::RIGHT => (max_width - size.width, max_height / 2 - size.height / 2),
                 Alignment::BOTTOM_LEFT => (0, max_height - size.height),
                 Alignment::BOTTOM => (max_width / 2 - size.width / 2, max_height - size.height),
                 Alignment::BOTTOM_RIGHT => (max_width - size.width, max_height - size.height),
             };
 
-            child.render(context.offset(alignment_offset.0, alignment_offset.1).clone(), buffer);
+            id.push(index as u64);
+            child.render(
+                id,
+                context
+                    .clone()
+                    .offset(alignment_offset.0, alignment_offset.1)
+                    .with_size(size),
+                buffer,
+            );
+            id.pop();
         }
     }
 }
@@ -368,7 +405,13 @@ mod tests {
     #[test]
     fn test_bottom_left_alignment_in_vstack() {
         let stack = vstack((
-            text("Centered Text").frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::BOTTOM_LEFT),
+            text("Centered Text").frame(
+                None,
+                None,
+                Some(u16::MAX),
+                Some(u16::MAX),
+                Alignment::BOTTOM_LEFT,
+            ),
             vstack((text("Bottom Text"), text("Bottom Text"))),
         ));
 
@@ -386,7 +429,11 @@ mod tests {
 
     #[test]
     fn test_border_view_in_vstack_center_vertically() {
-        let view = vstack((text("TOP"), text("CENTER").center().border(), text("BOTTOM")));
+        let view = vstack((
+            text("TOP"), //
+            text("CENTER").center().border(),
+            text("BOTTOM"),
+        ));
 
         let expected_output = vec![
             "TOP          ", // Top text

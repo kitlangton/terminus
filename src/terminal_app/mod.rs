@@ -1,12 +1,15 @@
 mod raw_mode_guard;
 mod renderer;
 
-use std::io::stdout;
+use std::time::Duration;
+use std::{io::stdout, time::Instant};
+use tokio::time::timeout;
 
 use crate::*;
 use async_trait::async_trait;
 use crossterm::event::{
-    Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind,
+    Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyModifiers, MouseEvent,
+    MouseEventKind,
 };
 use futures::{FutureExt, StreamExt};
 use tokio::sync::mpsc;
@@ -15,6 +18,9 @@ use raw_mode_guard::RawModeGuard;
 use renderer::*;
 
 use self::{fullscreen_renderer::FullScreenRenderer, inline_renderer::InlineRenderer};
+
+pub use sync_terminal_app::*;
+pub mod sync_terminal_app;
 
 pub enum Event<M> {
     Key(KeyEvent),
@@ -40,7 +46,11 @@ pub trait AsyncTerminalApp {
     ///
     /// # Returns
     /// `true` if the application should continue running, `false` otherwise.
-    fn update(&mut self, event: Event<Self::Message>, sender: &mpsc::UnboundedSender<Self::Message>) -> bool;
+    fn update(
+        &mut self,
+        event: Event<Self::Message>,
+        sender: &mpsc::UnboundedSender<Self::Message>,
+    ) -> bool;
 
     /// Initialize the application.
     ///
@@ -92,58 +102,69 @@ fn create_renderer(use_full_screen: bool) -> SomeRenderer<std::io::Stdout> {
 }
 
 #[async_trait]
-pub trait AsyncTerminalAppExt: AsyncTerminalApp {
+pub trait AsyncTerminalAppExt: AsyncTerminalApp + Sized {
     async fn execute(&mut self, use_full_screen: bool) {
         let (message_sender, mut message_receiver) = mpsc::unbounded_channel::<Self::Message>();
-        let (terminal_event_sender, mut terminal_event_receiver) = mpsc::unbounded_channel::<CrosstermEvent>();
+        let (terminal_event_sender, mut terminal_event_receiver) =
+            mpsc::unbounded_channel::<CrosstermEvent>();
 
         let mut renderer = create_renderer(use_full_screen);
         let _guard = RawModeGuard::new(use_full_screen);
         let terminal_event_task = handle_event(terminal_event_sender);
 
+        // Allow the application to initialize itself
         self.init(&message_sender);
 
-        loop {
-            renderer.render(&self.render());
+        // Initial render
+        renderer.render(&self.render());
 
-            tokio::select! {
-                Some(event) = terminal_event_receiver.recv() => {
-                    match event {
-                        CrosstermEvent::Key(KeyEvent {
-                            code: KeyCode::Char('c' | 'd'),
-                            modifiers: KeyModifiers::CONTROL,
-                            ..
-                        }) => break,
-                        CrosstermEvent::Resize(w, h) => renderer.resize(w, h),
-                        CrosstermEvent::Mouse(MouseEvent { kind, .. }) => {
-                            match kind {
-                                MouseEventKind::ScrollDown => {
-                                    if !self.update(Event::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), &message_sender) {
-                                        break;
-                                    }
-                                }
-                                MouseEventKind::ScrollUp => {
-                                    if !self.update(Event::Key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)), &message_sender) {
-                                        break;
-                                    }
-                                }
-                                _ => {}
-                            }
-                        },
-                        CrosstermEvent::Key(key) => {
-                            if !self.update(Event::Key(key), &message_sender) {
-                                break;
-                            }
-                        }
-                        _ => {}
-                    }
+        let collect_duration = Duration::from_millis(5);
+
+        loop {
+            let mut events = Vec::new();
+            let mut messages = Vec::new();
+
+            // Collect events and messages for a short duration
+            let start = Instant::now();
+            while start.elapsed() < collect_duration {
+                tokio::select! {
+                    Ok(Some(event)) = timeout(collect_duration, terminal_event_receiver.recv()) => {
+                        events.push(event);
+                    },
+                    Ok(Some(msg)) = timeout(collect_duration, message_receiver.recv()) => {
+                        messages.push(msg);
+                    },
+                    else => break,
                 }
-                Some(msg) = message_receiver.recv() => {
-                    if !self.update(Event::Message(msg), &message_sender) {
-                        break;
-                    }
+            }
+
+            let should_render = !events.is_empty() || !messages.is_empty();
+
+            // Process collected events
+            let mut should_continue = true;
+            for event in events {
+                if !handle_terminal_event(self, event, &message_sender, &mut renderer) {
+                    should_continue = false;
+                    break;
                 }
-                else => break,
+            }
+
+            // Process collected messages
+            for msg in messages {
+                if !self.update(Event::Message(msg), &message_sender) {
+                    should_continue = false;
+                    break;
+                }
+            }
+
+            // Break out of the loop if necessary
+            if !should_continue {
+                break;
+            }
+
+            // Render after processing the batch
+            if should_render {
+                renderer.render(&self.render());
             }
         }
 
@@ -158,48 +179,46 @@ pub trait AsyncTerminalAppExt: AsyncTerminalApp {
 
 impl<T: AsyncTerminalApp> AsyncTerminalAppExt for T {}
 
-pub trait SyncTerminalApp {
-    fn render(&self) -> impl View;
-    fn update(&mut self, event: KeyEvent);
-    fn handle_exit(&mut self) -> Option<impl View> {
-        None as Option<EmptyView>
+#[inline]
+fn handle_terminal_event<App: AsyncTerminalApp>(
+    app: &mut App,
+    event: CrosstermEvent,
+    message_sender: &mpsc::UnboundedSender<App::Message>,
+    renderer: &mut SomeRenderer<std::io::Stdout>,
+) -> bool {
+    match event {
+        CrosstermEvent::Key(KeyEvent {
+            code: KeyCode::Char('c' | 'd'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        }) => false,
+        CrosstermEvent::Key(key) => app.update(Event::Key(key), message_sender),
+        CrosstermEvent::Resize(w, h) => {
+            renderer.resize(w, h);
+            true
+        }
+        CrosstermEvent::Mouse(MouseEvent { kind, .. }) => {
+            handle_mouse_event(app, kind, message_sender)
+        }
+        _ => true,
     }
 }
 
-pub trait SyncTerminalAppExt: SyncTerminalApp {
-    fn execute(&mut self, use_full_screen: bool) {
-        let mut renderer = create_renderer(use_full_screen);
-        let _guard = RawModeGuard::new(use_full_screen);
-
-        loop {
-            renderer.render(&self.render());
-            let event = crossterm::event::read().unwrap();
-            match event {
-                CrosstermEvent::Key(KeyEvent {
-                    code: KeyCode::Char('c' | 'd'),
-                    modifiers: KeyModifiers::CONTROL,
-                    ..
-                }) => break,
-                CrosstermEvent::Mouse(MouseEvent { kind, .. }) => match kind {
-                    MouseEventKind::ScrollDown => self.update(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
-                    MouseEventKind::ScrollUp => self.update(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)),
-                    _ => {}
-                },
-                CrosstermEvent::Resize(width, height) => {
-                    renderer.resize(width, height);
-                }
-                CrosstermEvent::Key(event) => {
-                    self.update(event);
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(view) = self.handle_exit() {
-            renderer.render(&view);
-        }
-        renderer.move_cursor_to_bottom_of_current_view();
+#[inline]
+fn handle_mouse_event<App: AsyncTerminalApp>(
+    app: &mut App,
+    kind: MouseEventKind,
+    message_sender: &mpsc::UnboundedSender<App::Message>,
+) -> bool {
+    match kind {
+        MouseEventKind::ScrollDown => app.update(
+            Event::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+            message_sender,
+        ),
+        MouseEventKind::ScrollUp => app.update(
+            Event::Key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)),
+            message_sender,
+        ),
+        _ => true,
     }
 }
-
-impl<T: SyncTerminalApp> SyncTerminalAppExt for T {}

@@ -17,6 +17,14 @@ impl<V: View> ContextModifier<V> {
             modifier: Some(modifier),
         }
     }
+
+    pub(crate) fn modifier_when(child: V, condition: bool, modifier: Modifier) -> Self {
+        Self {
+            child,
+            fg: None,
+            modifier: if condition { Some(modifier) } else { None },
+        }
+    }
 }
 
 impl<V: View> View for ContextModifier<V> {
@@ -24,8 +32,8 @@ impl<V: View> View for ContextModifier<V> {
         self.child.size(proposed)
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         let context = context.with_fg(self.fg).with_modifier(self.modifier);
-        self.child.render(context, buffer);
+        self.child.render(id, context, buffer);
     }
 }

@@ -26,10 +26,11 @@ pub use crossterm::event::{KeyCode, KeyEvent};
 /// Rendered Output
 /// ---------------
 /// Hello There
-pub fn text(text: &str) -> Text {
+pub fn text<S: AsRef<str>>(text: S) -> Text {
+    let ref_text = text.as_ref();
     Text {
-        text: text.to_string().into(),
-        width: text.width() as u16,
+        text: ref_text.into(),
+        width: ref_text.width() as u16,
     }
 }
 
@@ -104,13 +105,15 @@ impl private::Sealed for AnyView {}
 
 impl AnyView {
     pub fn new(view: impl View + 'static) -> Self {
-        AnyView { view: Arc::new(view) }
+        AnyView {
+            view: Arc::new(view),
+        }
     }
 }
 
 impl View for AnyView {
-    fn render(&self, context: Context, buffer: &mut buffer::Buffer) {
-        self.view.render(context, buffer)
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut buffer::Buffer) {
+        self.view.render(id, context, buffer)
     }
 
     fn size(&self, proposed: buffer::Size) -> buffer::Size {

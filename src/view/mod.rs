@@ -5,6 +5,8 @@ pub mod stack;
 pub mod text;
 pub mod view_tuple;
 
+use std::fmt::Debug;
+
 use crate::*;
 
 pub use border::{Border, BorderStyle};
@@ -25,19 +27,25 @@ pub use view_tuple::*;
 ///     hstack((text("1."), text("Eggs"))),
 ///     hstack((text("2."), text("Powders"))),
 ///     hstack((text("3."), text("Milk"))),
-/// )); // .border()
+/// )).border();
+///
+/// let expected = vec![
+///     "┌────────────┐",
+///     "│ 1. Eggs    │",
+///     "│ 2. Powders │",
+///     "│ 3. Milk    │",
+///     "└────────────┘",
+/// ].join("\n");
+///
+/// assert_eq!(expected, view.as_str());
 /// ```
-/// Rendered Output:
-/// +----------------+
-/// | 1. Eggs        |
-/// | 2. Powders     |
-/// | 3. Milk        |
-/// +----------------+
 pub trait View: private::Sealed + 'static {
     fn size(&self, proposed: Size) -> Size;
 
-    fn render(&self, context: Context, buffer: &mut Buffer);
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer);
 }
+// HELLO! Just re-connecting my mic :D
+// Meanwhile. I'll demo the current state below...
 
 pub(crate) mod private {
     pub trait Sealed {}
@@ -74,6 +82,16 @@ pub trait ViewExtensions: View + Sized {
         self.frame(None, None, None, Some(u16::MAX), Alignment::TOP)
     }
 
+    fn fill(self) -> Frame<Self> {
+        self.frame(
+            None,
+            None,
+            Some(u16::MAX),
+            Some(u16::MAX),
+            Alignment::TOP_LEFT,
+        )
+    }
+
     fn center_vertically(self) -> Frame<Self> {
         self.frame(None, None, None, Some(u16::MAX), Alignment::CENTER)
     }
@@ -82,8 +100,18 @@ pub trait ViewExtensions: View + Sized {
         self.frame(None, Some(min_height), None, None, Alignment::TOP)
     }
 
+    fn min_width(self, min_width: u16) -> Frame<Self> {
+        self.frame(Some(min_width), None, None, None, Alignment::LEFT)
+    }
+
     fn center(self) -> Frame<Self> {
-        self.frame(None, None, Some(u16::MAX), Some(u16::MAX), Alignment::CENTER)
+        self.frame(
+            None,
+            None,
+            Some(u16::MAX),
+            Some(u16::MAX),
+            Alignment::CENTER,
+        )
     }
 
     fn border(self) -> Border<Self> {
@@ -177,7 +205,22 @@ pub trait ViewExtensions: View + Sized {
     }
 
     fn bold_when(self, condition: bool) -> ContextModifier<Self> {
-        ContextModifier::modifier(self, if condition { Modifier::BOLD } else { Modifier::empty() })
+        ContextModifier::modifier(
+            self,
+            if condition {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            },
+        )
+    }
+
+    fn italic(self) -> ContextModifier<Self> {
+        ContextModifier::modifier(self, Modifier::ITALIC)
+    }
+
+    fn italic_when(self, condition: bool) -> ContextModifier<Self> {
+        ContextModifier::modifier_when(self, condition, Modifier::ITALIC)
     }
 
     fn underline(self) -> ContextModifier<Self> {
@@ -185,18 +228,31 @@ pub trait ViewExtensions: View + Sized {
     }
 
     fn underline_when(self, condition: bool) -> ContextModifier<Self> {
-        ContextModifier::modifier(
-            self,
-            if condition {
-                Modifier::UNDERLINE
-            } else {
-                Modifier::empty()
-            },
-        )
+        ContextModifier::modifier_when(self, condition, Modifier::UNDERLINE)
     }
 
     fn dim(self) -> ContextModifier<Self> {
         ContextModifier::modifier(self, Modifier::DIM)
+    }
+
+    fn dim_when(self, condition: bool) -> ContextModifier<Self> {
+        ContextModifier::modifier_when(self, condition, Modifier::DIM)
+    }
+
+    fn strikethrough(self) -> ContextModifier<Self> {
+        ContextModifier::modifier(self, Modifier::STRIKETHROUGH)
+    }
+
+    fn strikethrough_when(self, condition: bool) -> ContextModifier<Self> {
+        ContextModifier::modifier_when(self, condition, Modifier::STRIKETHROUGH)
+    }
+
+    fn visible(self, condition: bool) -> IfThenView<Self, EmptyView> {
+        IfThenView {
+            condition,
+            true_view: self,
+            false_view: empty(),
+        }
     }
 
     fn as_any(self) -> AnyView
@@ -209,7 +265,11 @@ pub trait ViewExtensions: View + Sized {
     fn as_str(self) -> String {
         let size = self.size(Size::max());
         let mut buffer = Buffer::new(size.width, size.height);
-        self.render(Context::new(Rect::new(0, 0, size.width, size.height)), &mut buffer);
+        self.render(
+            &mut ViewId::empty(),
+            Context::new(Rect::new(0, 0, size.width, size.height)),
+            &mut buffer,
+        );
         buffer.as_str()
     }
 }
@@ -226,20 +286,21 @@ impl<V: View> View for Option<V> {
         }
     }
 
-    fn render(&self, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
         if let Some(view) = self {
-            view.render(context, buffer);
+            view.render(id, context, buffer);
         }
     }
 }
 
 mod context_modifier;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Context {
     pub(crate) rect: Rect,
     pub(crate) fg: Color,
     pub(crate) modifier: Modifier,
+    pub(crate) app_state: AppState,
 }
 
 impl Context {
@@ -248,38 +309,38 @@ impl Context {
             rect,
             fg: Color::Reset,
             modifier: Modifier::empty(),
+            app_state: AppState::new(),
         }
     }
 
-    fn with_size(&self, size: Size) -> Self {
-        Self {
-            rect: Rect {
-                point: self.rect.point,
-                size,
-            },
-            ..self.clone()
-        }
+    pub fn with_app_state(mut self, app_state: AppState) -> Self {
+        self.app_state = app_state;
+        self
     }
 
-    fn with_fg(self, fg: Option<Color>) -> Self {
-        Self {
-            fg: fg.unwrap_or(self.fg),
-            ..self
-        }
+    pub fn with_size(mut self, size: Size) -> Self {
+        self.rect.size = size;
+        self
     }
 
-    fn with_modifier(self, modifier: Option<Modifier>) -> Self {
-        Self {
-            modifier: self.modifier | modifier.unwrap_or(Modifier::empty()),
-            ..self
-        }
+    pub fn inset_by(mut self, left: u16, right: u16, top: u16, bottom: u16) -> Self {
+        self.rect = self.rect.inset_by(left, right, top, bottom);
+        self
     }
 
-    pub fn offset(&self, offset_x: u16, offset_y: u16) -> Context {
-        Self {
-            rect: self.rect.offset(offset_x, offset_y),
-            ..self.clone()
-        }
+    pub fn with_fg(mut self, fg: Option<Color>) -> Self {
+        self.fg = fg.unwrap_or(self.fg);
+        self
+    }
+
+    pub fn with_modifier(mut self, modifier: Option<Modifier>) -> Self {
+        self.modifier = self.modifier | modifier.unwrap_or_else(Modifier::empty);
+        self
+    }
+
+    pub fn offset(mut self, offset_x: u16, offset_y: u16) -> Self {
+        self.rect = self.rect.offset(offset_x, offset_y);
+        self
     }
 }
 
@@ -289,6 +350,7 @@ impl Default for Context {
             rect: Rect::new(0, 0, 0, 0),
             fg: Color::Reset,
             modifier: Modifier::empty(),
+            app_state: AppState::new(),
         }
     }
 }
@@ -302,11 +364,158 @@ impl View for EmptyView {
         Size::zero()
     }
 
-    fn render(&self, _context: Context, _buffer: &mut Buffer) {
+    fn render(&self, _id: &mut ViewId, _context: Context, _buffer: &mut Buffer) {
         // Do nothing
     }
 }
 
 pub fn empty() -> EmptyView {
     EmptyView {}
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IfThenView<T, F> {
+    condition: bool,
+    true_view: T,
+    false_view: F,
+}
+
+pub fn if_then_view<T: View, F: View>(
+    condition: bool,
+    true_view: T,
+    false_view: F,
+) -> IfThenView<T, F> {
+    IfThenView {
+        condition,
+        true_view,
+        false_view,
+    }
+}
+
+impl<T: View, F: View> private::Sealed for IfThenView<T, F> {}
+
+impl<T: View, F: View> View for IfThenView<T, F> {
+    fn size(&self, proposed: Size) -> Size {
+        if self.condition {
+            self.true_view.size(proposed)
+        } else {
+            self.false_view.size(proposed)
+        }
+    }
+
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+        if self.condition {
+            id.push(1);
+            self.true_view.render(id, context, buffer);
+        } else {
+            id.push(0);
+            self.false_view.render(id, context, buffer);
+        }
+        id.pop();
+    }
+}
+
+/// Pilfered, with love, from rui [[https://github.com/audulus/rui]]
+///
+/// let mut stateMap: Arc<RwLock<HashMap<ViewId, Box<dyn Any>>>>
+///
+/// vstack(
+///     hstack(view1, view2),
+///     view3,
+/// )
+///
+/// vstack( []
+///     hstack( [0]
+///       view1,  [0,0]
+///       view2,  [0,1]
+///      ),
+///     view3, [1]
+/// )
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ViewId {
+    path: Vec<u64>,
+}
+
+impl ViewId {
+    pub(crate) fn empty() -> Self {
+        Self { path: vec![] }
+    }
+
+    pub(crate) fn push(&mut self, id: u64) {
+        self.path.push(id);
+    }
+
+    pub(crate) fn pop(&mut self) {
+        self.path.pop().unwrap();
+    }
+}
+
+use std::any::Any;
+use std::collections::HashMap;
+
+use std::sync::{Arc, RwLock};
+
+#[derive(Clone, Debug)]
+pub struct AppState {
+    pub view_map: Arc<RwLock<HashMap<ViewId, Box<dyn Any>>>>,
+}
+
+unsafe impl Send for AppState {}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            view_map: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    // Method to add a value to the view_map
+    pub fn add_value<V: Any + 'static + Debug + Send>(&self, view_id: &ViewId, value: V) {
+        let mut map = self.view_map.write().unwrap();
+        map.insert(view_id.clone(), Box::new(value));
+    }
+
+    // Method to get a value from the view_map
+    pub fn get_value<V: Any + Clone + Send>(&self, view_id: &ViewId) -> Option<V> {
+        let map = self.view_map.read().unwrap();
+        let value = map.get(view_id)?;
+        value.downcast_ref::<V>().cloned()
+    }
+
+    // get value or insert and return default
+    pub fn get_or_insert<V: Any + Clone + Debug + Send>(&self, view_id: &ViewId, default: V) -> V {
+        let mut map = self.view_map.write().unwrap();
+        let entry0 = map.entry(view_id.clone());
+        // println!("FOUND ENTRY: {:?}", entry0);
+        let entry = entry0.or_insert_with(|| Box::new(default));
+        let value = entry.downcast_ref::<V>().unwrap().clone();
+        // println!("GOT VALUE: {:?}", value);
+        value
+    }
+}
+
+pub struct RenderCounter {}
+
+impl private::Sealed for RenderCounter {}
+
+impl View for RenderCounter {
+    fn size(&self, proposed: Size) -> Size {
+        Size::new(30, 1).min(proposed)
+    }
+
+    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+        let count = context.app_state.get_or_insert(id, 0);
+        context.app_state.add_value(id, count + 1);
+
+        let rect = context.rect;
+        buffer.set_string_at(
+            rect.point.x,
+            rect.point.y,
+            rect.size.width,
+            &format!("Render {:?}: {}", id.path, count),
+            context.fg,
+            None,
+            context.modifier,
+        );
+    }
 }
