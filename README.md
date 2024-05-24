@@ -12,5 +12,5 @@ The creation of this library [was mostly streamed on YouTube](https://www.youtub
 ### Inspiration + Blatant Theft
 
 - The view DSL is inspired by SwiftUI.
-- Various aspects of idiomatic Rust DSL design were pilfered from [ratatui](https://github.com/ratatui-org/ratatui), particularly for ViewId and State management.
-- The rendering logic is _HEAVILY_ inspired by [rui](https://github.com/audulus/rui).
+- Various aspects of idiomatic Rust DSL design were pilfered from [rui](https://github.com/audulus/rui), particularly for ViewId and State management.
+- The rendering logic is _HEAVILY_ inspired by [ratatui](https://github.com/ratatui-org/ratatui).
