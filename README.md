@@ -4,7 +4,7 @@ A TUI library for Rust. Or, rather, for me to learn Rust by writing a TUI librar
 
 The creation of this library [was mostly streamed on YouTube](https://www.youtube.com/playlist?list=PLicC_uGS5eIKvYrRzh-_CnqDLb5ved3MQ).
 
-### Attribution
+### TODO
 
 - [ ] Create a ForEach view
 - [ ] Audit pub vs pub(crate) functions
