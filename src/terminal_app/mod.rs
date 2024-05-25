@@ -103,7 +103,7 @@ fn create_renderer(use_full_screen: bool) -> SomeRenderer<std::io::Stdout> {
 
 #[async_trait]
 pub trait AsyncTerminalAppExt: AsyncTerminalApp + Sized {
-    async fn execute(&mut self, use_full_screen: bool) {
+    async fn run(&mut self, use_full_screen: bool) {
         let (message_sender, mut message_receiver) = mpsc::unbounded_channel::<Self::Message>();
         let (terminal_event_sender, mut terminal_event_receiver) =
             mpsc::unbounded_channel::<CrosstermEvent>();

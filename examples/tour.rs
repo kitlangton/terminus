@@ -5,7 +5,7 @@ use terminus::*;
 #[tokio::main]
 async fn main() {
     let mut app = TourApp::default();
-    app.execute(true).await;
+    app.run(true).await;
 }
 
 #[derive(Clone, Copy, PartialEq)]

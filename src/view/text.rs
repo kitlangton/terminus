@@ -19,7 +19,13 @@ impl View for Text {
         }
     }
 
-    fn render(&self, _id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(
+        &self,
+        _id: &mut ViewId,
+        context: Context,
+        _state: &mut AppState,
+        buffer: &mut Buffer,
+    ) {
         let rect = context.rect;
         buffer.set_string_at(
             rect.left(),
@@ -40,7 +46,7 @@ impl View for &'static str {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         render_text(self, id, context, buffer);
     }
 }
@@ -52,7 +58,7 @@ impl View for String {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         render_text(self, id, context, buffer);
     }
 }
@@ -99,7 +105,12 @@ mod tests {
         let mut buffer = Buffer::new(10, 1);
         let rect = Rect::new(0, 0, 10, 1);
         let context = Context::new(rect);
-        text.render(&mut ViewId::empty(), context, &mut buffer);
+        text.render(
+            &mut ViewId::empty(),
+            context,
+            &mut AppState::new(),
+            &mut buffer,
+        );
 
         let expected_output = "Hello     ";
         let result: String = buffer.as_str();
@@ -115,7 +126,12 @@ mod tests {
         let mut buffer = Buffer::new(5, 1);
         let rect = Rect::new(0, 0, 5, 1);
         let context = Context::new(rect);
-        text.render(&mut ViewId::empty(), context, &mut buffer);
+        text.render(
+            &mut ViewId::empty(),
+            context,
+            &mut AppState::new(),
+            &mut buffer,
+        );
 
         let expected_output = "Hello";
         let result: String = buffer.as_str();

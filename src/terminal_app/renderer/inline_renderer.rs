@@ -2,7 +2,7 @@ use std::io::{self, Write};
 
 use crate::{
     buffer::{Buffer, Modifier, Rect, Size},
-    Color, ViewId,
+    AppState, Color, ViewId,
 };
 use crossterm::{
     cursor::{MoveTo, MoveUp},
@@ -85,6 +85,8 @@ impl<W: Write> InlineRenderer<W> {
         view.render(
             &mut ViewId::empty(),
             Context::new(rect),
+            // TODO: fix
+            &mut AppState::new(),
             &mut self.current_buffer,
         );
         self.view_height = view_height;

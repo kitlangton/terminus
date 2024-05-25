@@ -9,7 +9,7 @@ pub trait SyncTerminalApp {
 }
 
 pub trait SyncTerminalAppExt: SyncTerminalApp {
-    fn execute(&mut self, use_full_screen: bool) {
+    fn run(&mut self, use_full_screen: bool) {
         let mut renderer = create_renderer(use_full_screen);
         let _guard = RawModeGuard::new(use_full_screen);
 

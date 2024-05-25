@@ -62,7 +62,8 @@ impl<W: Write> FullScreenRenderer<W> {
         let rect = Rect::new(0, 0, view_width, view_height);
         view.render(
             &mut ViewId::empty(),
-            Context::new(rect).with_app_state(self.app_state.clone()),
+            Context::new(rect),
+            &mut self.app_state,
             &mut self.current_buffer,
         );
         self.print_buffer().unwrap();

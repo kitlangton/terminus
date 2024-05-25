@@ -32,8 +32,8 @@ impl<V: View> View for ContextModifier<V> {
         self.child.size(proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let context = context.with_fg(self.fg).with_modifier(self.modifier);
-        self.child.render(id, context, buffer);
+        self.child.render(id, context, state, buffer);
     }
 }

@@ -42,7 +42,7 @@ pub use view_tuple::*;
 pub trait View: private::Sealed + 'static {
     fn size(&self, proposed: Size) -> Size;
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer);
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer);
 }
 // HELLO! Just re-connecting my mic :D
 // Meanwhile. I'll demo the current state below...
@@ -268,6 +268,7 @@ pub trait ViewExtensions: View + Sized {
         self.render(
             &mut ViewId::empty(),
             Context::new(Rect::new(0, 0, size.width, size.height)),
+            &mut AppState::new(),
             &mut buffer,
         );
         buffer.as_str()
@@ -286,9 +287,9 @@ impl<V: View> View for Option<V> {
         }
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         if let Some(view) = self {
-            view.render(id, context, buffer);
+            view.render(id, context, state, buffer);
         }
     }
 }
@@ -300,7 +301,6 @@ pub struct Context {
     pub(crate) rect: Rect,
     pub(crate) fg: Color,
     pub(crate) modifier: Modifier,
-    pub(crate) app_state: AppState,
 }
 
 impl Context {
@@ -309,13 +309,7 @@ impl Context {
             rect,
             fg: Color::Reset,
             modifier: Modifier::empty(),
-            app_state: AppState::new(),
         }
-    }
-
-    pub fn with_app_state(mut self, app_state: AppState) -> Self {
-        self.app_state = app_state;
-        self
     }
 
     pub fn with_size(mut self, size: Size) -> Self {
@@ -350,7 +344,6 @@ impl Default for Context {
             rect: Rect::new(0, 0, 0, 0),
             fg: Color::Reset,
             modifier: Modifier::empty(),
-            app_state: AppState::new(),
         }
     }
 }
@@ -364,7 +357,13 @@ impl View for EmptyView {
         Size::zero()
     }
 
-    fn render(&self, _id: &mut ViewId, _context: Context, _buffer: &mut Buffer) {
+    fn render(
+        &self,
+        _id: &mut ViewId,
+        _context: Context,
+        _state: &mut AppState,
+        _buffer: &mut Buffer,
+    ) {
         // Do nothing
     }
 }
@@ -403,13 +402,13 @@ impl<T: View, F: View> View for IfThenView<T, F> {
         }
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         if self.condition {
             id.push(1);
-            self.true_view.render(id, context, buffer);
+            self.true_view.render(id, context, state, buffer);
         } else {
             id.push(0);
-            self.false_view.render(id, context, buffer);
+            self.false_view.render(id, context, state, buffer);
         }
         id.pop();
     }
@@ -453,11 +452,9 @@ impl ViewId {
 use std::any::Any;
 use std::collections::HashMap;
 
-use std::sync::{Arc, RwLock};
-
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AppState {
-    pub view_map: Arc<RwLock<HashMap<ViewId, Box<dyn Any>>>>,
+    pub view_map: HashMap<ViewId, Box<dyn Any>>,
 }
 
 unsafe impl Send for AppState {}
@@ -465,31 +462,30 @@ unsafe impl Send for AppState {}
 impl AppState {
     pub fn new() -> Self {
         Self {
-            view_map: Arc::new(RwLock::new(HashMap::new())),
+            view_map: HashMap::new(),
         }
     }
 
     // Method to add a value to the view_map
-    pub fn add_value<V: Any + 'static + Debug + Send>(&self, view_id: &ViewId, value: V) {
-        let mut map = self.view_map.write().unwrap();
-        map.insert(view_id.clone(), Box::new(value));
+    pub fn add_value<V: Any + 'static + Debug + Send>(&mut self, view_id: &ViewId, value: V) {
+        self.view_map.insert(view_id.clone(), Box::new(value));
     }
 
     // Method to get a value from the view_map
-    pub fn get_value<V: Any + Clone + Send>(&self, view_id: &ViewId) -> Option<V> {
-        let map = self.view_map.read().unwrap();
-        let value = map.get(view_id)?;
+    pub fn get_value<V: Any + Clone + Send>(&mut self, view_id: &ViewId) -> Option<V> {
+        let value = self.view_map.get(view_id)?;
         value.downcast_ref::<V>().cloned()
     }
 
     // get value or insert and return default
-    pub fn get_or_insert<V: Any + Clone + Debug + Send>(&self, view_id: &ViewId, default: V) -> V {
-        let mut map = self.view_map.write().unwrap();
-        let entry0 = map.entry(view_id.clone());
-        // println!("FOUND ENTRY: {:?}", entry0);
+    pub fn get_or_insert<V: Any + Clone + Debug + Send>(
+        &mut self,
+        view_id: &ViewId,
+        default: V,
+    ) -> V {
+        let entry0 = self.view_map.entry(view_id.clone());
         let entry = entry0.or_insert_with(|| Box::new(default));
         let value = entry.downcast_ref::<V>().unwrap().clone();
-        // println!("GOT VALUE: {:?}", value);
         value
     }
 }
@@ -503,9 +499,9 @@ impl View for RenderCounter {
         Size::new(30, 1).min(proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
-        let count = context.app_state.get_or_insert(id, 0);
-        context.app_state.add_value(id, count + 1);
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
+        let count = state.get_or_insert(id, 0);
+        state.add_value(id, count + 1);
 
         let rect = context.rect;
         buffer.set_string_at(

@@ -14,7 +14,12 @@ pub(crate) fn assert_rendered_view(
         point: Point::zero(),
         size: buffer.size.clone(),
     });
-    view.render(&mut ViewId::empty(), render_context, &mut buffer);
+    view.render(
+        &mut ViewId::empty(),
+        render_context,
+        &mut AppState::new(),
+        &mut buffer,
+    );
     let result: String = buffer.as_str();
     assert_eq!(result, expected.join("\n"));
 }

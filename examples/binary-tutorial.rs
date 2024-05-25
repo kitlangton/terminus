@@ -216,5 +216,5 @@ impl AsyncTerminalApp for BinaryTutorialApp {
 #[tokio::main]
 async fn main() {
     let mut app = BinaryTutorialApp::default();
-    app.execute(true).await;
+    app.run(true).await;
 }

@@ -112,8 +112,14 @@ impl AnyView {
 }
 
 impl View for AnyView {
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut buffer::Buffer) {
-        self.view.render(id, context, buffer)
+    fn render(
+        &self,
+        id: &mut ViewId,
+        context: Context,
+        state: &mut AppState,
+        buffer: &mut buffer::Buffer,
+    ) {
+        self.view.render(id, context, state, buffer)
     }
 
     fn size(&self, proposed: buffer::Size) -> buffer::Size {

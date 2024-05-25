@@ -25,10 +25,10 @@ where
         f(proposed).size(proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let f = &self.view;
         let view = f(context.rect.size);
-        view.render(id, context, buffer);
+        view.render(id, context, state, buffer);
     }
 }
 
@@ -45,11 +45,11 @@ impl<V: View, BG: View> View for Background<V, BG> {
         self.view.size(proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let size = self.view.size(context.rect.size);
         self.background
-            .render(id, context.clone().with_size(size), buffer);
-        self.view.render(id, context, buffer);
+            .render(id, context.clone().with_size(size), state, buffer);
+        self.view.render(id, context, state, buffer);
     }
 }
 
@@ -64,7 +64,13 @@ impl View for FillColor {
         proposed
     }
 
-    fn render(&self, _id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(
+        &self,
+        _id: &mut ViewId,
+        context: Context,
+        _state: &mut AppState,
+        buffer: &mut Buffer,
+    ) {
         let point = context.rect.point;
         let size = context.rect.size;
         for y in point.y..point.y + size.height {
@@ -154,7 +160,7 @@ impl<VT: ViewTuple + 'static> View for HStack<VT> {
         }
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let rect = context.rect;
         let (sizes, _, max_height) = self.layout(rect.size);
 
@@ -173,6 +179,7 @@ impl<VT: ViewTuple + 'static> View for HStack<VT> {
                 child.render(
                     id,
                     context.clone().offset(offset_x, offset_y).with_size(size),
+                    state,
                     buffer,
                 );
                 id.pop();
@@ -261,7 +268,7 @@ impl<VT: ViewTuple + 'static> View for VStack<VT> {
         }
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let rect = context.rect;
         let (sizes, max_width, _) = self.layout(rect.size);
 
@@ -280,6 +287,7 @@ impl<VT: ViewTuple + 'static> View for VStack<VT> {
                 child.render(
                     id,
                     context.clone().offset(offset_x, offset_y).with_size(size),
+                    state,
                     buffer,
                 );
                 id.pop();
@@ -325,7 +333,7 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
         }
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         let mut max_width = 0;
         let mut max_height = 0;
 
@@ -368,6 +376,7 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
                     .clone()
                     .offset(alignment_offset.0, alignment_offset.1)
                     .with_size(size),
+                state,
                 buffer,
             );
             id.pop();

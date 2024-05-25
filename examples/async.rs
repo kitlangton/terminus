@@ -11,7 +11,11 @@ enum Message {
 }
 
 impl SimpleAsyncApp {
-    fn handle_key_event(&mut self, key_event: KeyEvent, tx: &mpsc::UnboundedSender<Message>) -> bool {
+    fn handle_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        tx: &mpsc::UnboundedSender<Message>,
+    ) -> bool {
         match key_event.code {
             KeyCode::Down => self.count = self.count.saturating_sub(1),
             KeyCode::Up => self.count = self.count.saturating_add(1),
@@ -57,18 +61,27 @@ impl AsyncTerminalApp for SimpleAsyncApp {
     fn render(&self) -> impl View {
         let count = self.count.to_string();
 
-        let children = (0..self.count).map(|i| text(&i.to_string())).collect::<Vec<_>>();
+        let children = (0..self.count)
+            .map(|i| text(&i.to_string()))
+            .collect::<Vec<_>>();
 
         let charging = self.super_charge.map(|c| {
             let slots: String = "=".repeat(c) + &" ".repeat(10 - c);
-            hstack(("CHARGING: ", hstack(("|", slots, "|")).spacing(0).color(Color::Red)))
+            hstack((
+                "CHARGING: ",
+                hstack(("|", slots, "|")).spacing(0).color(Color::Red),
+            ))
         });
         vstack((hstack(("Count:", count)), charging, vstack(children)))
             .border()
             .border_style(BorderStyle::Rounded)
     }
 
-    fn update(&mut self, event: Event<Self::Message>, tx: &mpsc::UnboundedSender<Self::Message>) -> bool {
+    fn update(
+        &mut self,
+        event: Event<Self::Message>,
+        tx: &mpsc::UnboundedSender<Self::Message>,
+    ) -> bool {
         match event {
             Event::Key(key_event) => self.handle_key_event(key_event, tx),
             Event::Message(Message::Charge) => {
@@ -86,5 +99,5 @@ async fn main() {
         super_charge: None,
     };
 
-    app.execute(false).await;
+    app.run(false).await;
 }

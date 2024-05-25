@@ -1,4 +1,4 @@
-use crate::{private, Size, View, ViewId};
+use crate::{private, AppState, Size, View, ViewId};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HorizontalAlignment {
@@ -142,7 +142,13 @@ impl<V: View> View for Frame<V> {
         Size::new(width, height)
     }
 
-    fn render(&self, id: &mut ViewId, context: crate::Context, buffer: &mut crate::Buffer) {
+    fn render(
+        &self,
+        id: &mut ViewId,
+        context: crate::Context,
+        state: &mut AppState,
+        buffer: &mut crate::Buffer,
+    ) {
         let child_size = self.child.size(context.rect.size);
         let size = self.size(context.rect.size);
 
@@ -173,6 +179,7 @@ impl<V: View> View for Frame<V> {
         self.child.render(
             id,
             context.with_size(size).offset(offset_x, offset_y),
+            state,
             buffer,
         );
     }

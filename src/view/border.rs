@@ -122,8 +122,8 @@ impl<V> Border<V> {
                     },
                     fg: self.border_color,
                     modifier: Modifier::empty(),
-                    app_state: AppState::new(),
                 },
+                &mut AppState::new(),
                 buffer,
             );
         }
@@ -216,7 +216,7 @@ impl<V: View> View for Border<V> {
         child_size.outset_by(2, 2, 1, 1).min(proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, buffer: &mut Buffer) {
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
         // Calculate the size of the border view based on the proposed size from the context
         let size = self.size(context.rect.size);
 
@@ -229,7 +229,7 @@ impl<V: View> View for Border<V> {
 
         // Render the child view within the inner rectangle
         // This ensures the child view is drawn inside the borders
-        self.child.render(id, inner_context, buffer);
+        self.child.render(id, inner_context, state, buffer);
 
         // Draw the borders around the border rectangle
         self.draw_borders(buffer, border_context.rect);
