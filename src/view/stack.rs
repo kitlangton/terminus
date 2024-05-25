@@ -117,8 +117,8 @@ impl<VT: ViewTuple> HStack<VT> {
             .make_iterator()
             .enumerate()
             .map(|(index, child)| {
-                let lower = child.size(Size::new(0, proposed.height)).width;
-                let upper = child.size(Size::new(u16::MAX, proposed.height)).width;
+                let lower = child.value.size(Size::new(0, proposed.height)).width;
+                let upper = child.value.size(Size::new(u16::MAX, proposed.height)).width;
                 (index, child, upper - lower)
             })
             .collect::<Vec<_>>();
@@ -134,7 +134,7 @@ impl<VT: ViewTuple> HStack<VT> {
             .enumerate()
             .for_each(|(i, (render_index, child, _))| {
                 let width = remaining_width / (total - i) as u16;
-                let child_size = child.size(Size::new(width, proposed.height));
+                let child_size = child.value.size(Size::new(width, proposed.height));
                 remaining_width = remaining_width
                     .saturating_sub(child_size.width)
                     .saturating_sub(self.spacing);
@@ -168,15 +168,14 @@ impl<VT: ViewTuple + 'static> View for HStack<VT> {
         self.children
             .make_iterator()
             .zip(sizes)
-            .enumerate()
-            .for_each(|(i, (child, size))| {
+            .for_each(|(child, size)| {
                 let offset_y = match self.alignment {
                     VerticalAlignment::Top => 0,
                     VerticalAlignment::Center => (max_height.saturating_sub(size.height)) / 2,
                     VerticalAlignment::Bottom => max_height.saturating_sub(size.height),
                 };
-                id.push(i as u64);
-                child.render(
+                id.push(child.id);
+                child.value.render(
                     id,
                     context.clone().offset(offset_x, offset_y).with_size(size),
                     state,
@@ -225,8 +224,8 @@ impl<VT: ViewTuple> VStack<VT> {
             .make_iterator()
             .enumerate()
             .map(|(index, child)| {
-                let lower = child.size(Size::new(proposed.width, 0)).height;
-                let upper = child.size(Size::new(proposed.width, u16::MAX)).height;
+                let lower = child.value.size(Size::new(proposed.width, 0)).height;
+                let upper = child.value.size(Size::new(proposed.width, u16::MAX)).height;
                 (index, child, upper - lower)
             })
             .collect::<Vec<_>>();
@@ -240,7 +239,7 @@ impl<VT: ViewTuple> VStack<VT> {
             .enumerate()
             .for_each(|(i, (render_index, child, _))| {
                 let height = remaining_height / (total - i) as u16;
-                let child_size = child.size(Size::new(proposed.width, height));
+                let child_size = child.value.size(Size::new(proposed.width, height));
                 remaining_height = remaining_height
                     .saturating_sub(child_size.height)
                     .saturating_sub(self.spacing);
@@ -276,15 +275,14 @@ impl<VT: ViewTuple + 'static> View for VStack<VT> {
         self.children
             .make_iterator()
             .zip(sizes)
-            .enumerate()
-            .for_each(|(i, (child, size))| {
+            .for_each(|(child, size)| {
                 let offset_x = match self.alignment {
                     HorizontalAlignment::Left => 0,
                     HorizontalAlignment::Center => (max_width.saturating_sub(size.width)) / 2,
                     HorizontalAlignment::Right => max_width.saturating_sub(size.width),
                 };
-                id.push(i as u64);
-                child.render(
+                id.push(child.id);
+                child.value.render(
                     id,
                     context.clone().offset(offset_x, offset_y).with_size(size),
                     state,
@@ -324,7 +322,7 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
             self.children
                 .make_iterator()
                 .fold((0, 0), |(max_width, max_height), child| {
-                    let size = child.size(proposed);
+                    let size = child.value.size(proposed);
                     (max_width.max(size.width), max_height.max(size.height))
                 });
         Size {
@@ -340,20 +338,19 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
         let sizes = self
             .children
             .make_iterator()
-            .enumerate()
-            .map(|(index, child)| {
-                let size = child.size(context.rect.size);
+            .map(|child| {
+                let size = child.value.size(context.rect.size);
                 if size.width > max_width {
                     max_width = size.width;
                 }
                 if size.height > max_height {
                     max_height = size.height;
                 }
-                (index, child, size)
+                (child, size)
             })
             .collect::<Vec<_>>();
 
-        for (index, child, size) in sizes {
+        for (child, size) in sizes {
             let alignment_offset = match self.alignment {
                 Alignment::TOP_LEFT => (0, 0),
                 Alignment::TOP => (max_width / 2 - size.width / 2, 0),
@@ -369,8 +366,8 @@ impl<VT: ViewTuple + 'static> View for ZStack<VT> {
                 Alignment::BOTTOM_RIGHT => (max_width - size.width, max_height - size.height),
             };
 
-            id.push(index as u64);
-            child.render(
+            id.push(child.id);
+            child.value.render(
                 id,
                 context
                     .clone()

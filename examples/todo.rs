@@ -1,7 +1,10 @@
 use terminus::*;
 use tokio::sync::mpsc;
+use uuid::*;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Todo {
+    id: Uuid,
     name: String,
     is_complete: bool,
 }
@@ -9,14 +12,13 @@ struct Todo {
 impl Todo {
     fn new(name: &str) -> Self {
         Self {
+            id: Uuid::new_v4(),
             name: name.to_string(),
             is_complete: false,
         }
     }
 }
 
-// render: TodoApp  -> View
-// update: (KeyEvent, mut TodoApp) -> ()
 struct TodoApp {
     todos: Vec<Todo>,
     input: String,
@@ -129,7 +131,7 @@ impl TodoApp {
                 self.todos
                     .iter()
                     .enumerate()
-                    .map(|(index, todo)| self.render_todo(index, todo))
+                    .map(|(index, todo)| self.render_todo(index, todo).id(todo.id))
                     .collect::<Vec<_>>(),
             ),
         ))

@@ -85,6 +85,7 @@ fn render_numbers(n: i16, shift: i16) -> impl View {
             text(number.to_string())
                 .bold_when(idx as i16 == n)
                 .dim_when(idx as i16 != n)
+                .id(idx as i16)
         })
         .collect::<Vec<_>>();
     hstack(numbers).spacing(1)
@@ -98,6 +99,7 @@ fn render_two_complement_numbers(n: i16) -> impl View {
             text(number.to_string())
                 .bold_when(idx as i16 == n)
                 .dim_when(idx as i16 != n)
+                .id(idx as i16)
         })
         .collect::<Vec<_>>();
     hstack(numbers).spacing(1)
@@ -111,6 +113,7 @@ fn render_alphabet(n: i16, shift: i16) -> impl View {
             text(letter.to_string())
                 .bold_when(idx as i16 == n)
                 .dim_when(idx as i16 != n)
+                .id(idx as i16)
         })
         .collect::<Vec<_>>();
     hstack(alphabet).spacing(1)
@@ -142,9 +145,10 @@ fn render_colors(selected: i16, shift: i16) -> impl View {
             let is_selected = idx as i16 == selected;
             let color = colors[((i + shift + 16) % 16) as usize]; // Ensure wrapping both ways
             let char = if is_selected { '█' } else { '░' };
-            text(char.to_string()).color(color)
+            text(char.to_string()).color(color).id(idx as i16)
         })
         .collect::<Vec<_>>();
+
     hstack(blocks).spacing(1)
 }
 
@@ -152,13 +156,13 @@ fn render_helper(parts: Vec<String>) -> impl View {
     let mut leading_zero = true;
     let parts = parts
         .into_iter()
-        .map(|s| {
-            if leading_zero && s == "0" {
-                text(s).dim().as_any()
-            } else {
+        .enumerate()
+        .map(|(idx, s)| {
+            let is_leading_zero = leading_zero && s == "0";
+            if !is_leading_zero {
                 leading_zero = false;
-                text(s).as_any()
             }
+            text(s).dim_when(is_leading_zero).id(idx as i16)
         })
         .collect::<Vec<_>>();
     hstack(parts)

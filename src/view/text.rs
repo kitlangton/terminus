@@ -46,7 +46,13 @@ impl View for &'static str {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
+    fn render(
+        &self,
+        id: &mut ViewId,
+        context: Context,
+        _state: &mut AppState,
+        buffer: &mut Buffer,
+    ) {
         render_text(self, id, context, buffer);
     }
 }
@@ -58,7 +64,13 @@ impl View for String {
         size_for_text(self, proposed)
     }
 
-    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
+    fn render(
+        &self,
+        id: &mut ViewId,
+        context: Context,
+        _state: &mut AppState,
+        buffer: &mut Buffer,
+    ) {
         render_text(self, id, context, buffer);
     }
 }

@@ -6,6 +6,7 @@ pub mod text;
 pub mod view_tuple;
 
 use std::fmt::Debug;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::*;
 
@@ -239,6 +240,10 @@ pub trait ViewExtensions: View + Sized {
         ContextModifier::modifier_when(self, condition, Modifier::DIM)
     }
 
+    fn id<ID: Hash>(self, id: ID) -> IdentifiedView<Self> {
+        IdentifiedView::new(id, self)
+    }
+
     fn strikethrough(self) -> ContextModifier<Self> {
         ContextModifier::modifier(self, Modifier::STRIKETHROUGH)
     }
@@ -260,6 +265,11 @@ pub trait ViewExtensions: View + Sized {
         Self: 'static,
     {
         AnyView::new(self)
+    }
+
+    /// Returns the type ID of the underlying view.
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
     }
 
     fn as_str(self) -> String {
@@ -348,6 +358,7 @@ impl Default for Context {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EmptyView;
 
 impl private::Sealed for EmptyView {}
@@ -435,9 +446,19 @@ pub struct ViewId {
     path: Vec<u64>,
 }
 
+fn do_hash<H: Hash>(id: H) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    id.hash(&mut hasher);
+    hasher.finish()
+}
+
 impl ViewId {
     pub(crate) fn empty() -> Self {
         Self { path: vec![] }
+    }
+
+    pub(crate) fn push_hashable<H: Hash>(&mut self, id: H) {
+        self.path.push(do_hash(id));
     }
 
     pub(crate) fn push(&mut self, id: u64) {
@@ -449,15 +470,13 @@ impl ViewId {
     }
 }
 
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct AppState {
-    pub view_map: HashMap<ViewId, Box<dyn Any>>,
+    pub view_map: HashMap<ViewId, Box<dyn Any + Send>>,
 }
-
-unsafe impl Send for AppState {}
 
 impl AppState {
     pub fn new() -> Self {
@@ -466,42 +485,30 @@ impl AppState {
         }
     }
 
-    // Method to add a value to the view_map
-    pub fn add_value<V: Any + 'static + Debug + Send>(&mut self, view_id: &ViewId, value: V) {
-        self.view_map.insert(view_id.clone(), Box::new(value));
-    }
-
-    // Method to get a value from the view_map
-    pub fn get_value<V: Any + Clone + Send>(&mut self, view_id: &ViewId) -> Option<V> {
-        let value = self.view_map.get(view_id)?;
-        value.downcast_ref::<V>().cloned()
-    }
-
-    // get value or insert and return default
-    pub fn get_or_insert<V: Any + Clone + Debug + Send>(
+    pub fn get_mut<T: Any + 'static + Send>(
         &mut self,
         view_id: &ViewId,
-        default: V,
-    ) -> V {
-        let entry0 = self.view_map.entry(view_id.clone());
-        let entry = entry0.or_insert_with(|| Box::new(default));
-        let value = entry.downcast_ref::<V>().unwrap().clone();
-        value
+        default: impl FnOnce() -> T,
+    ) -> &mut T {
+        let entry = self.view_map.entry(view_id.clone());
+        let value = entry.or_insert_with(|| Box::new(default()));
+        value.downcast_mut::<T>().unwrap()
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RenderCounter {}
 
 impl private::Sealed for RenderCounter {}
 
 impl View for RenderCounter {
     fn size(&self, proposed: Size) -> Size {
-        Size::new(30, 1).min(proposed)
+        Size::new(80, 1).min(proposed)
     }
 
     fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
-        let count = state.get_or_insert(id, 0);
-        state.add_value(id, count + 1);
+        let count = state.get_mut(id, || 0);
+        *count += 1;
 
         let rect = context.rect;
         buffer.set_string_at(

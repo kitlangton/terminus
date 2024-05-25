@@ -8,7 +8,7 @@ async fn main() {
     app.run(true).await;
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Hash)]
 enum Tab {
     ZStack,
     Frame,
@@ -155,12 +155,11 @@ fn tab_bar_view(tab: Tab) -> impl View {
             } else {
                 Color::Reset
             };
-            vstack(
-                t.to_string()
-                    .to_uppercase()
-                    .underline_when(is_active)
-                    .color(color),
-            )
+            t.to_string()
+                .to_uppercase()
+                .underline_when(is_active)
+                .color(color)
+                .id(t)
         })
         .collect::<Vec<_>>();
 
@@ -238,6 +237,7 @@ pub fn list_tab_view(list_tab: &ListTab) -> impl View {
                 format!("ITEM {}", i).color(color),
                 text(x),
             ))
+            .id(i)
         })
         .collect::<Vec<_>>();
 
@@ -264,11 +264,14 @@ pub fn list_tab_view(list_tab: &ListTab) -> impl View {
 }
 
 // TODO: Improve this and pull it into the library.
-pub fn scroll_view<V: View + Clone>(views: Vec<V>, selected_index: usize) -> impl View {
+pub fn scroll_view<V: View + Clone>(
+    views: Vec<IdentifiedView<V>>,
+    selected_index: usize,
+) -> impl View {
     with_size(move |available_size| {
         let sizes = views
             .iter()
-            .map(|view| view.size(available_size))
+            .map(|view| view.value.size(available_size))
             .collect::<Vec<_>>();
 
         let mut start_offset = 0;
@@ -326,7 +329,7 @@ fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
         .bold();
 
     let background = with_size(move |size| {
-        fn make_line(line_number: u16, width: u16, tick: usize) -> String {
+        fn make_line(line_number: u16, width: u16, tick: usize) -> impl View {
             let base_string = format!("{} ", (line_number as usize) + tick);
             let repeat_count = (width as usize + base_string.len() - 1) / base_string.len();
             let repeated_string: String = base_string.repeat(repeat_count);
@@ -335,7 +338,7 @@ fn stack_tab_view(tick: usize, tab: &ZStackTab) -> impl View {
 
         vstack(
             (1..=size.height)
-                .map(|line| make_line(line, size.width, tick))
+                .map(|line| make_line(line, size.width, tick).id(line))
                 .collect::<Vec<_>>(),
         )
     });

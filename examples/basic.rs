@@ -10,9 +10,7 @@ impl SyncTerminalApp for SimpleApp {
         let count = self.count.to_string();
 
         // for the numbers 0 through count, have a Vec of text(<index>)
-        let children: Vec<Text> = (0..self.count)
-            .map(|i| text(&i.to_string()))
-            .collect::<Vec<_>>();
+        let children = for_each_view(0..self.count, |i| text(&i.to_string()));
         vstack((hstack((text("Count:"), text(&count))), vstack(children)))
     }
 

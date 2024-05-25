@@ -8,7 +8,7 @@ pub use terminal_app::*;
 use unicode_width::UnicodeWidthStr;
 pub use view::*;
 
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 #[cfg(test)]
 mod tests;
@@ -80,6 +80,20 @@ pub fn hstack<VT: ViewTuple>(children: VT) -> HStack<VT> {
 }
 
 /// Creates overlapping views
+///
+/// # Examples
+/// ```
+/// use terminus::*;
+/// let view = zstack((
+///     text("Layer 1"),
+///     text("Layer 2"),
+/// ));
+/// ```
+///
+/// Rendered Output
+/// ---------------
+/// Layer 1
+/// Layer 2
 pub fn zstack<VT: ViewTuple>(children: VT) -> ZStack<VT> {
     ZStack {
         children,
@@ -119,7 +133,9 @@ impl View for AnyView {
         state: &mut AppState,
         buffer: &mut buffer::Buffer,
     ) {
-        self.view.render(id, context, state, buffer)
+        id.push_hashable(self.view.type_id());
+        self.view.render(id, context, state, buffer);
+        id.pop();
     }
 
     fn size(&self, proposed: buffer::Size) -> buffer::Size {

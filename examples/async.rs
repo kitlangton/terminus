@@ -61,9 +61,8 @@ impl AsyncTerminalApp for SimpleAsyncApp {
     fn render(&self) -> impl View {
         let count = self.count.to_string();
 
-        let children = (0..self.count)
-            .map(|i| text(&i.to_string()))
-            .collect::<Vec<_>>();
+        let children = // okay
+         for_each_view(0..self.count, |i| i.to_string());
 
         let charging = self.super_charge.map(|c| {
             let slots: String = "=".repeat(c) + &" ".repeat(10 - c);

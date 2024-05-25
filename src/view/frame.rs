@@ -95,6 +95,7 @@ impl Alignment {
     };
 }
 
+#[derive(Clone, Debug)]
 pub struct Frame<V> {
     pub(crate) child: V,
     pub(crate) min_width: Option<u16>,
