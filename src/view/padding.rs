@@ -1,6 +1,4 @@
-use self::buffer::{Buffer, Size};
-
-use super::*;
+use crate::{private, AppState, Buffer, Context, Size, View, ViewId};
 
 #[derive(Clone, Debug)]
 pub struct Padding<V: View> {

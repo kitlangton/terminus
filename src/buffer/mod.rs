@@ -26,7 +26,15 @@ impl Buffer {
         &mut self.cells[index as usize]
     }
 
-    pub fn set_char_at(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Option<Color>, modifier: Modifier) {
+    pub fn set_char_at(
+        &mut self,
+        x: u16,
+        y: u16,
+        ch: char,
+        fg: Color,
+        bg: Option<Color>,
+        modifier: Modifier,
+    ) {
         let cell = self
             .get_mut(x, y)
             .set_symbol(ch.to_string().as_ref())
@@ -66,7 +74,11 @@ impl Buffer {
     pub fn as_str(&self) -> String {
         self.cells
             .chunks(self.size.width as usize)
-            .map(|row| row.iter().map(|cell| cell.to_ansi_code()).collect::<String>())
+            .map(|row| {
+                row.iter()
+                    .map(|cell| cell.symbol.to_string())
+                    .collect::<String>()
+            })
             .collect::<Vec<String>>()
             .join("\n")
     }
@@ -98,7 +110,14 @@ impl Buffer {
 
     pub fn clear_line(&mut self, y: u16) {
         for x in 0..self.size.width {
-            self.set_char_at(x, y, '¬', Color::Reset, Some(Color::Reset), Modifier::empty());
+            self.set_char_at(
+                x,
+                y,
+                '¬',
+                Color::Reset,
+                Some(Color::Reset),
+                Modifier::empty(),
+            );
         }
     }
 

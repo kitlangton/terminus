@@ -8,26 +8,11 @@ pub trait ViewTuple {
 }
 
 #[derive(Clone, Debug)]
-pub struct IdentifiedView<V> {
-    pub id: u64,
-    pub value: V,
-}
-
-impl<V> IdentifiedView<V> {
-    pub fn new<ID: Hash>(id: ID, value: V) -> Self {
-        Self {
-            id: do_hash(&id),
-            value,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct ForEachView<V> {
     values: Vec<IdentifiedView<V>>,
 }
 
-impl<V: View + Sized + 'static> ViewTuple for ForEachView<V> {
+impl<V: View> ViewTuple for ForEachView<V> {
     fn make_iterator(&self) -> impl Iterator<Item = IdentifiedView<&dyn View>> {
         self.values.iter().map(|value| IdentifiedView {
             id: value.id,

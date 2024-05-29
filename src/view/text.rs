@@ -1,7 +1,5 @@
-use self::view::View;
-use compact_str::CompactString;
-
 use super::*;
+use compact_str::CompactString;
 
 #[derive(Clone, Debug)]
 pub struct Text {

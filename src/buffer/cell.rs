@@ -42,15 +42,6 @@ impl Cell {
         }
     }
 
-    pub fn to_ansi_code(&self) -> String {
-        format!(
-            "{}{}{}",
-            self.fg.to_foreground_code(),
-            self.bg.to_background_code(),
-            self.symbol,
-        )
-    }
-
     pub(crate) fn reset(&mut self) {
         self.symbol = CompactString::new_inline(" ");
         self.fg = Color::Reset;
