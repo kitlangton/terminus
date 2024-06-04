@@ -48,6 +48,49 @@ impl Cell {
         self.bg = Color::Reset;
         self.modifier = Modifier::empty();
     }
+
+    pub(crate) fn to_string(&self) -> String {
+        use crossterm::style::{
+            Attribute, Color as CrosstermColor, Print, SetAttribute, SetBackgroundColor,
+            SetForegroundColor,
+        };
+        use std::fmt::Write;
+
+        let mut result = String::new();
+
+        write!(result, "{}", SetForegroundColor(self.fg)).unwrap();
+        write!(result, "{}", SetBackgroundColor(self.bg)).unwrap();
+
+        // Set modifiers
+        if self.modifier.contains(Modifier::BOLD) {
+            write!(result, "{}", SetAttribute(Attribute::Bold)).unwrap();
+        }
+        if self.modifier.contains(Modifier::ITALIC) {
+            write!(result, "{}", SetAttribute(Attribute::Italic)).unwrap();
+        }
+        if self.modifier.contains(Modifier::UNDERLINE) {
+            write!(result, "{}", SetAttribute(Attribute::Underlined)).unwrap();
+        }
+        if self.modifier.contains(Modifier::DIM) {
+            write!(result, "{}", SetAttribute(Attribute::Dim)).unwrap();
+        }
+        if self.modifier.contains(Modifier::INVERSE) {
+            write!(result, "{}", SetAttribute(Attribute::Reverse)).unwrap();
+        }
+        if self.modifier.contains(Modifier::STRIKETHROUGH) {
+            write!(result, "{}", SetAttribute(Attribute::CrossedOut)).unwrap();
+        }
+
+        // Print the symbol
+        write!(result, "{}", Print(&self.symbol)).unwrap();
+
+        // Reset all attributes
+        write!(result, "{}", SetForegroundColor(CrosstermColor::Reset)).unwrap();
+        write!(result, "{}", SetBackgroundColor(CrosstermColor::Reset)).unwrap();
+        write!(result, "{}", SetAttribute(Attribute::Reset)).unwrap();
+
+        result
+    }
 }
 
 impl Default for Cell {

@@ -34,7 +34,7 @@ pub use view_tuple::*;
 /// ---------------
 /// Example of a VStack with nested HStacks
 /// ```
-/// use terminus::*;
+/// use altar::*;
 /// let view = vstack((
 ///     hstack((text("1."), text("Eggs"))),
 ///     hstack((text("2."), text("Powders"))),
@@ -49,7 +49,7 @@ pub use view_tuple::*;
 ///     "└────────────┘",
 /// ].join("\n");
 ///
-/// assert_eq!(expected, view.as_str());
+/// assert_eq!(expected, view.as_plain_str());
 /// ```
 pub trait View: private::Sealed + 'static {
     fn size(&self, proposed: Size) -> Size;
@@ -172,23 +172,23 @@ pub trait ViewExtensions: View + Sized {
     }
 
     fn green(self) -> ContextModifier<Self> {
-        self.color(Color::Green)
+        self.color(Color::DarkGreen)
     }
 
     fn red(self) -> ContextModifier<Self> {
-        self.color(Color::Red)
+        self.color(Color::DarkRed)
     }
 
     fn blue(self) -> ContextModifier<Self> {
-        self.color(Color::Blue)
+        self.color(Color::DarkBlue)
     }
 
     fn yellow(self) -> ContextModifier<Self> {
-        self.color(Color::Yellow)
+        self.color(Color::DarkYellow)
     }
 
     fn white(self) -> ContextModifier<Self> {
-        self.color(Color::Green)
+        self.color(Color::White)
     }
 
     fn black(self) -> ContextModifier<Self> {
@@ -196,11 +196,11 @@ pub trait ViewExtensions: View + Sized {
     }
 
     fn cyan(self) -> ContextModifier<Self> {
-        self.color(Color::Cyan)
+        self.color(Color::DarkCyan)
     }
 
     fn magenta(self) -> ContextModifier<Self> {
-        self.color(Color::Magenta)
+        self.color(Color::DarkMagenta)
     }
 
     fn background(self, color: Color) -> Background<Self, FillColor> {
@@ -249,6 +249,14 @@ pub trait ViewExtensions: View + Sized {
         ContextModifier::modifier_when(self, condition, Modifier::DIM)
     }
 
+    fn inverse(self) -> ContextModifier<Self> {
+        ContextModifier::modifier(self, Modifier::INVERSE)
+    }
+
+    fn inverse_when(self, condition: bool) -> ContextModifier<Self> {
+        ContextModifier::modifier_when(self, condition, Modifier::INVERSE)
+    }
+
     fn id<ID: Hash>(self, id: ID) -> IdentifiedView<Self> {
         IdentifiedView::new(id, self)
     }
@@ -281,7 +289,11 @@ pub trait ViewExtensions: View + Sized {
         TypeId::of::<Self>()
     }
 
-    fn as_str(self) -> String {
+    // TODO: Make private
+    fn render_to_string<F>(&self, to_string: F) -> String
+    where
+        F: Fn(&Buffer) -> String,
+    {
         let size = self.size(Size::max());
         let mut buffer = Buffer::new(size.width, size.height);
         self.render(
@@ -290,7 +302,15 @@ pub trait ViewExtensions: View + Sized {
             &mut AppState::new(),
             &mut buffer,
         );
-        buffer.as_str()
+        to_string(&buffer)
+    }
+
+    fn as_str(self) -> String {
+        self.render_to_string(Buffer::as_str)
+    }
+
+    fn as_plain_str(&self) -> String {
+        self.render_to_string(Buffer::as_plain_str)
     }
 }
 

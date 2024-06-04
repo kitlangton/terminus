@@ -38,6 +38,9 @@ pub trait AsyncTerminalApp {
     /// An implementation of the `View` trait that represents the current state of the application.
     fn render(&self) -> impl View;
 
+    /// Returns true if the application should quit.
+    // fn should_quit(&self) -> bool;
+
     /// Update the application's state based on the given event.
     ///
     /// # Parameters

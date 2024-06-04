@@ -19,7 +19,7 @@ pub use crossterm::event::{KeyCode, KeyEvent};
 ///
 /// # Examples
 /// ```
-/// use terminus::*;
+/// use altar::*;
 /// let view = text("Hello There");
 /// ```
 ///
@@ -38,7 +38,7 @@ pub fn text<S: AsRef<str>>(text: S) -> Text {
 ///
 /// # Examples
 /// ```
-/// use terminus::*;
+/// use altar::*;
 /// let view = vstack((
 ///     text("Hello"),
 ///     text("There"),
@@ -61,7 +61,7 @@ pub fn vstack<VT: ViewTuple>(children: VT) -> VStack<VT> {
 ///
 /// # Examples
 /// ```
-/// use terminus::*;
+/// use altar::*;
 /// let view = hstack((
 ///     text("Tick"),
 ///     text("Tock"),
@@ -83,7 +83,7 @@ pub fn hstack<VT: ViewTuple>(children: VT) -> HStack<VT> {
 ///
 /// # Examples
 /// ```
-/// use terminus::*;
+/// use altar::*;
 /// let view = zstack((
 ///     text("Layer 1"),
 ///     text("Layer 2"),

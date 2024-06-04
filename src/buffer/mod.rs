@@ -71,12 +71,22 @@ impl Buffer {
         }
     }
 
+    /// Returns a string with escape sequences and ANSI color codes.
     pub fn as_str(&self) -> String {
+        self.cells
+            .chunks(self.size.width as usize)
+            .map(|row| row.iter().map(|cell| cell.to_string()).collect::<String>())
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
+
+    /// Returns a string with no escape sequences or ANSI color codes.
+    pub fn as_plain_str(&self) -> String {
         self.cells
             .chunks(self.size.width as usize)
             .map(|row| {
                 row.iter()
-                    .map(|cell| cell.symbol.to_string())
+                    .map(|cell| cell.symbol.clone())
                     .collect::<String>()
             })
             .collect::<Vec<String>>()

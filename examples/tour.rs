@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use terminus::*;
+use altar::*;
 
 #[tokio::main]
 async fn main() {

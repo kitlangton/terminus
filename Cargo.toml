@@ -1,7 +1,9 @@
 [package]
-name = "terminus"
+name = "altar"
 version = "0.1.0"
 edition = "2021"
+description = "A TUI library in the style of SwiftUI"
+license = "Apache-2.0"
 
 [dependencies]
 async-trait = "0.1.80"

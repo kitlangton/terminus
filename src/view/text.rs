@@ -123,7 +123,7 @@ mod tests {
         );
 
         let expected_output = "Hello     ";
-        let result: String = buffer.as_str();
+        let result: String = buffer.as_plain_str();
         assert_eq!(result, expected_output);
     }
 
@@ -144,7 +144,7 @@ mod tests {
         );
 
         let expected_output = "Hello";
-        let result: String = buffer.as_str();
+        let result: String = buffer.as_plain_str();
         assert_eq!(result, expected_output);
     }
 

@@ -1,4 +1,4 @@
-use terminus::*;
+use altar::*;
 use tokio::sync::mpsc;
 use uuid::*;
 
@@ -161,7 +161,7 @@ impl AsyncTerminalApp for TodoApp {
         .spacing(2);
 
         vstack((
-            terminus::view::RenderCounter {},
+            altar::view::RenderCounter {},
             todos.fill(),
             commands_view,
         ))

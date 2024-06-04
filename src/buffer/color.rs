@@ -25,17 +25,11 @@ impl Modifier {
         let removed = previous.difference(next);
         let added = next.difference(previous);
 
-        if removed.contains(Modifier::BOLD) {
+        if removed.contains(Modifier::BOLD) || removed.contains(Modifier::DIM) {
             queue!(writer, SetAttribute(Attribute::NormalIntensity)).unwrap();
-
             if next.contains(Modifier::DIM) {
                 queue!(writer, SetAttribute(Attribute::Dim)).unwrap();
-            }
-        }
-
-        if removed.contains(Modifier::DIM) {
-            queue!(writer, SetAttribute(Attribute::NormalIntensity)).unwrap();
-            if next.contains(Modifier::BOLD) {
+            } else if next.contains(Modifier::BOLD) {
                 queue!(writer, SetAttribute(Attribute::Bold)).unwrap();
             }
         }

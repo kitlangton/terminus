@@ -1,4 +1,4 @@
-use terminus::*;
+use altar::*;
 use tokio::sync::mpsc;
 
 struct SimpleAsyncApp {

@@ -3,7 +3,7 @@ struct SimpleApp {
 }
 
 use crossterm::event::*;
-use terminus::*;
+use altar::*;
 
 impl SyncTerminalApp for SimpleApp {
     fn render(&self) -> impl View {

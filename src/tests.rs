@@ -20,7 +20,7 @@ pub(crate) fn assert_rendered_view(
         &mut AppState::new(),
         &mut buffer,
     );
-    let result: String = buffer.as_str();
+    let result: String = buffer.as_plain_str();
     assert_eq!(result, expected.join("\n"));
 }
 

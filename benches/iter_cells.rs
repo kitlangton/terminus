@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use terminus::buffer::Buffer;
+use altar::buffer::Buffer;
 
 pub fn benchmark_iter_cells(c: &mut Criterion) {
     let buffer = Buffer::new(100, 100);

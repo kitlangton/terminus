@@ -13,3 +13,15 @@ impl<V> IdentifiedView<V> {
         }
     }
 }
+
+impl<V: View> private::Sealed for IdentifiedView<V> {}
+
+impl<V: View> View for IdentifiedView<V> {
+    fn size(&self, proposed: Size) -> Size {
+        self.value.size(proposed)
+    }
+
+    fn render(&self, id: &mut ViewId, context: Context, state: &mut AppState, buffer: &mut Buffer) {
+        self.value.render(id, context, state, buffer)
+    }
+}

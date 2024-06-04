@@ -51,17 +51,31 @@ impl Rect {
         self.top() + self.size.height
     }
 
-    pub fn inset_by(self, inset_left: u16, inset_right: u16, inset_top: u16, inset_bottom: u16) -> Rect {
+    pub fn inset_by(
+        self,
+        inset_left: u16,
+        inset_right: u16,
+        inset_top: u16,
+        inset_bottom: u16,
+    ) -> Rect {
         Rect {
             point: Point {
                 x: self.point.x.saturating_add(inset_left),
                 y: self.point.y.saturating_add(inset_top),
             },
-            size: self.size.inset_by(inset_left, inset_right, inset_top, inset_bottom),
+            size: self
+                .size
+                .inset_by(inset_left, inset_right, inset_top, inset_bottom),
         }
     }
 
-    pub fn outset_by(self, outset_left: u16, outset_right: u16, outset_top: u16, outset_bottom: u16) -> Rect {
+    pub fn outset_by(
+        self,
+        outset_left: u16,
+        outset_right: u16,
+        outset_top: u16,
+        outset_bottom: u16,
+    ) -> Rect {
         Rect {
             point: Point {
                 x: self.point.x.saturating_sub(outset_left),
@@ -95,7 +109,10 @@ impl Size {
 
     /// Creates a new size with the width and height set to 0.
     pub fn zero() -> Size {
-        Size { width: 0, height: 0 }
+        Size {
+            width: 0,
+            height: 0,
+        }
     }
 
     /// Creates a new size with the width and height set to the maximum value of `u16`.
@@ -115,7 +132,7 @@ impl Size {
     ///
     /// # Example
     /// ```
-    /// use terminus::buffer::Size;
+    /// use altar::buffer::Size;
     /// let size = Size { width: 10, height: 8 };
     /// let inset_size = size.inset_by(1, 1, 1, 1);
     /// assert_eq!(inset_size, Size { width: 8, height: 6 });
@@ -131,7 +148,7 @@ impl Size {
     ///
     /// # Example
     /// ```
-    /// use terminus::buffer::Size;
+    /// use altar::buffer::Size;
     /// let size = Size { width: 10, height: 8 };
     /// let outset_size = size.outset_by(1, 1, 1, 1);
     /// assert_eq!(outset_size, Size { width: 12, height: 10 });
@@ -147,7 +164,7 @@ impl Size {
     ///
     /// # Example
     /// ```
-    /// use terminus::buffer::Size;
+    /// use altar::buffer::Size;
     /// let size = Size { width: 10, height: 8 };
     /// let proposed_size = Size { width: 12, height: 10 };
     /// let min_size = size.min(proposed_size);

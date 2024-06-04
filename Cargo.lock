@@ -27,6 +27,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "altar"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bitflags",
+ "compact_str",
+ "criterion",
+ "crossterm",
+ "futures",
+ "pretty_assertions",
+ "proptest",
+ "tokio",
+ "unicode-segmentation",
+ "unicode-width",
+ "uuid",
+]
+
+[[package]]
 name = "anes"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -982,24 +1000,6 @@ dependencies = [
  "fastrand",
  "rustix",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "terminus"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bitflags",
- "compact_str",
- "criterion",
- "crossterm",
- "futures",
- "pretty_assertions",
- "proptest",
- "tokio",
- "unicode-segmentation",
- "unicode-width",
- "uuid",
 ]
 
 [[package]]

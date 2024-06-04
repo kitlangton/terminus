@@ -53,17 +53,19 @@ impl<VT: ViewTuple> HStack<VT> {
             .for_each(|(i, (render_index, child, _))| {
                 let width = remaining_width / (total - i) as u16;
                 let child_size = child.value.size(Size::new(width, proposed.height));
-                remaining_width = remaining_width
-                    .saturating_sub(child_size.width)
-                    .saturating_sub(self.spacing);
+                remaining_width = remaining_width.saturating_sub(child_size.width);
                 sizes[*render_index] = child_size;
-                total_width += child_size.width + self.spacing;
+                total_width += child_size.width;
+                if child_size.width > 0 {
+                    remaining_width = remaining_width.saturating_sub(self.spacing);
+                    total_width += self.spacing;
+                }
                 if child_size.height > max_height {
                     max_height = child_size.height;
                 }
             });
 
-        total_width = total_width.saturating_sub(self.spacing); // Remove the last added spacing
+        total_width = total_width.saturating_sub(self.spacing); // Remove the last added spacing if any
 
         (sizes, total_width, max_height)
     }
@@ -100,7 +102,11 @@ impl<VT: ViewTuple + 'static> View for HStack<VT> {
                     buffer,
                 );
                 id.pop();
-                offset_x += size.width + self.spacing;
+                if size.width > 0 {
+                    offset_x += size.width + self.spacing;
+                } else {
+                    offset_x += size.width;
+                }
             });
     }
 }
